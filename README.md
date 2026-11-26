@@ -41,4 +41,4 @@ python motion-graphic-3d\scripts\jalankan.py cek film.html
 Buka `film.html` di Chrome/Edge: ▶ untuk memutar, tombol **Ekspor MP4** untuk menyimpan video.
 
 ## Ubah skill
-Sunting di repo ini, commit + push, lalu jalankan `pasang.ps1` lagi. Jangan menyunting salinan di `~/.claude/skills` langsung. Fitur mesin 3D baru masuk `motion-graphic-3d/assets/mesin3d/`. Setelah itu rakit kedua contoh, pastikan `cek` BERES, lalu catat di `references/mesin.md`.
+Repo ini salinan rapi dari skill yang dikembangkan di project Video AI (`.claude/skills/motion-graphic-3d` di repo Automation-youtube). Di PC pemilik: ubah di sana, jalankan `_skills/sinkron_repo_skill.ps1`, lalu commit + push di repo ini. Di PC lain: `git pull` lalu `pasang.ps1`. Jangan menyunting salinan di `~/.claude/skills` langsung. Fitur mesin 3D baru masuk `motion-graphic-3d/assets/mesin3d/`. Setelah itu rakit kedua contoh, pastikan `cek` BERES, lalu catat di `references/mesin.md`.
