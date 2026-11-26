@@ -50,7 +50,7 @@ Tulis juga di bawah tabel: hook + logline, sumber, **keadaan + warna dominan tia
 - [ ] Palet konsisten 4–5 warna; warna aksen hanya untuk hal penting.
 - [ ] SFX di setiap kejadian penting; musik berganti suasana di babak emosional.
 - [ ] Subtitle rapi: kecil gaya film, maks. 2 baris, tidak menutupi wajah tokoh.
-- [ ] 3D: bayangan jatuh di lantai (benda tidak melayang), tokoh duduk tepat di jok (`naik`), tidak ada benda tembus satu sama lain, subjek tidak terpotong tepi (9:16 sempit: lebar terlihat ±0,45 × jarak kamera).
+- [ ] 3D: `cek` tanpa SALAH tembus (tokoh/benda/kamera, `references/mesin.md` §9b); bayangan jatuh di lantai (benda tidak melayang), tokoh duduk tepat di jok (`naik`), tidak ada benda tembus satu sama lain (lihat juga di lembar kontak: tangan, kaki, benda di meja), subjek tidak terpotong tepi (9:16 sempit: lebar terlihat ±0,45 × jarak kamera).
 
 **5b. Warna dan topik (lihat `references/palet.md`, `references/dunia-topik.md`)**
 - [ ] Warna kaya dan berani seperti acuan (RicksClips3000) dan **berganti mengikuti keadaan tiap adegan** (satu warna dominan jenuh per adegan); tidak ada neon, pastel seragam, hitam murni di tepi/bayangan; bayangan berwarna, lampu bercahaya.

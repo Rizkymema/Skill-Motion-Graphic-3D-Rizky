@@ -6,6 +6,7 @@ Skill Claude Code untuk membuat video **motion graphic 3D** (9:16 atau 16:9, Sho
 - **Tokoh 3D ber-rig**: 40+ pose, 11 ekspresi, mulut bicara ikut kata, jalan/lari, naik motor/mobil, duduk makan, memegang properti, efek emosi, akting otomatis supaya tidak kaku.
 - **Benda dan tempat**: studio melengkung, langit, ruangan, kota, jalan, warung, rumah, pohon, motor, mobil, perabot, HP/TV/laptop yang layarnya berisi grafik 2D bergerak, papan bertulisan, grafik batang/pai 3D, ikon 3D, koin, uang, partikel.
 - **Lapisan 2D + suara**: teks atas, label yang menempel di benda 3D, subtitle kecil gaya film, musik dan SFX sintesis atau berkas, narasi ElevenLabs/rekaman sendiri.
+- **Tanpa clipping**: kaki selalu menapak, tangan/lengan tidak pernah masuk ke badan, kepala, atau benda (IK otomatis tiap bingkai); `cek` menolak tokoh yang menembus benda, benda saling tembus, dan kamera di dalam benda.
 - **Ekspor MP4 di browser** (WebCodecs H.264 + AAC), cek kualitas otomatis, lembar kontak, thumbnail. File HTML jalan offline.
 - Gaya bahan: `kartun` (bawaan), `clay`, `mainan`, `lowpoly`.
 

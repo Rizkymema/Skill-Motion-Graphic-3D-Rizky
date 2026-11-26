@@ -103,7 +103,8 @@ const ADEGAN = [
     dunia(d) {
       d.studio();
       celengan(d, { posisi: [.75, 0, .1], putar: -25, muncul: .2, nama: 'celengan' });
-      d.koin({ posisi: [.75, 2.4, .1], r: .16, putar: [0, 0, 0], anim: [[.3, { posisi: [.75, 2.4, .1] }], [1.0, { posisi: [.75, .82, .1] }, 'inCubic']], hilang: 1.05 });
+      // koin berhenti tepat di atas celah lalu menyusut masuk (tidak menembus badan celengan)
+      d.koin({ posisi: [.75, 2.4, .1], r: .16, anim: [[.3, { posisi: [.75, 2.4, .1], skala: 1 }], [1.0, { posisi: [.75, .93, .1] }, 'inCubic'], [1.3, { skala: .05 }, 'inQuad']], hilang: 1.3 });
       d.tokoh('dina', { posisi: [-.6, 0, .2], pose: [[0, 'tunjuk'], [1.2, 'hore']], ekspresi: [[0, 'senang'], [1.2, 'gembira']], bicara: [0, 1.2], hadap: 20, efek: [[1.2, 'bintang', 2.2]] });
       d.partikel('konfeti', { dari: [0, 1.6, 0], mulai: 1.2, n: 150, kuat: 4.5 });
     },

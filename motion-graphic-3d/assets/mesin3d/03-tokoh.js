@@ -88,9 +88,9 @@ class Tokoh3D {
     // --- badan: profil bubut (lathe) dipipihkan depan-belakang
     const prof = [[.0, -.06], [.15, -.06], [.165, 0], [.17, .12], [.178, .26], [.185, .38], [.17, .47], [.12, .52], [.05, .535], [0, .54]].map(([x, y]) => new THREE.Vector2(x * gemuk, y));
     const gBadan = geoSimpan(`badan|${gemuk}`, () => new THREE.LatheGeometry(prof, segQ(28)));
-    const mBadan = M(gBadan, baju); mBadan.scale.z = .74; badan.add(mBadan);
-    if (def.rok) { const rk = M(geoSilinder(.17 * gemuk, .3 * gemuk, .36, 28), def.rok); rk.position.y = -.16; rk.scale.z = .8; badan.add(rk); }
-    else { const pg = M(geoKotak(.31 * gemuk, .16, .23 * gemuk, .07), celana); pg.position.y = -.04; pinggul.add(pg); }
+    const mBadan = this.mBadan = M(gBadan, baju); mBadan.scale.z = .74; badan.add(mBadan);
+    if (def.rok) { const rk = M(geoSilinder(.17 * gemuk, .3 * gemuk, .36, 28), def.rok); rk.position.y = -.16; rk.scale.z = .8; badan.add(rk); this.mPinggul = rk; }
+    else { const pg = M(geoKotak(.31 * gemuk, .16, .23 * gemuk, .07), celana); pg.position.y = -.04; pinggul.add(pg); this.mPinggul = pg; }
     if (def.sabuk !== false && !def.rok) { const sb = M(geoKotak(.335 * gemuk, .045, .25 * gemuk, .02), campur(celana, P.gelap, .5), { tepi: false }); sb.position.y = .015; pinggul.add(sb); }
     // kerah / pakaian
     const kerah = def.kerah || 'kaos';
@@ -141,7 +141,7 @@ class Tokoh3D {
       const tumit = new THREE.Group(); tumit.position.y = -.36; lutut.add(tumit);
       const sp = M(geoKotak(.12, .1, .25, .045), sepatu); sp.position.set(0, -.02, .045); tumit.add(sp);
       const sol = M(geoKotak(.125, .025, .26, .01), def.sol || campur(sepatu, '#ffffff', .55), { tepi: false }); sol.position.set(0, -.065, .045); tumit.add(sol);
-      this.kaki[n] = { paha, lutut, tumit, s };
+      this.kaki[n] = { paha, lutut, tumit, s, mPaha: mp, mBetis: mb };
     });
     // pegangan (properti di tangan)
     this.pegangan = { Ka: null, Ki: null };
@@ -382,6 +382,7 @@ class Tokoh3D {
     lg(this.lengan.Ki, lKi); lg(this.lengan.Ka, lKa);
     const kk = (L, v) => { const s = L.s; L.paha.rotation.set(-v[0] * D2R, 0, s * (v[1] || 0) * D2R, 'XZY'); L.lutut.rotation.set((v[2] || 0) * D2R, 0, 0); L.tumit.rotation.set((v[0] - (v[2] || 0)) * D2R * (p.duduk ? 1 : .6), 0, 0); };
     kk(this.kaki.Ki, kKi); kk(this.kaki.Ka, kKa);
+    this.sudut = { lKi, lKa, p, yDasar: y };   // untuk anti-tembus (06-tabrak.js)
     // pegangan
     ['Ka', 'Ki'].forEach(sisi => {
       const v = o[sisi === 'Ka' ? 'pegang' : 'pegangKiri'], q = Array.isArray(v) && Array.isArray(v[0]) ? nilaiDi(v, t, a, .01).a : v;
@@ -389,6 +390,8 @@ class Tokoh3D {
       if (!P0 || P0.jenis !== q) { if (P0 && P0.obj) this.lengan[sisi].tangan.remove(P0.obj); const obj = q ? bendaPegang(q, this.dn, this) : null; if (obj) this.lengan[sisi].tangan.add(obj); this.pegangan[sisi] = { jenis: q, obj }; }
       const ob = this.pegangan[sisi].obj; if (ob && ob.userData.gerak) ob.userData.gerak(t, T);
     });
+    // anti-tembus: kaki menapak lantai/permukaan pijak, lalu lengan + tangan + properti didorong keluar dari badan, kepala, paha, tokoh lain, dan benda padat
+    if (o.padat !== false) { this.tapakKaki(); this.lenganTakTembus(); }
     // wajah
     const ev = nilaiDi(o.ekspresi || 'senang', t, a, .3), ea = EKSPRESI[ev.a] || EKSPRESI.senang, eb = ev.b ? EKSPRESI[ev.b] : null;
     const ex = eb ? { alis: ea.alis.map((v, i) => lerp(eb.alis[i], v, ev.k)), mata: ev.k > .5 ? ea.mata : eb.mata, mulut: ev.k > .5 ? ea.mulut : eb.mulut } : ea;

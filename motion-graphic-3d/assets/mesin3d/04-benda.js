@@ -31,7 +31,7 @@ Object.assign(DP, {
   },
   semak(o = {}) { const wr = o.warna || campur(P.utama, '#3F9A3A', .4), s = o.ukuran ?? .6; return this.grup(o, () => { [[0, s * .55, 0, s * .6], [-s * .6, s * .4, .05, s * .45], [s * .6, s * .42, -.05, s * .48]].forEach(([x, y, z, r], i) => this._b(geoBola(r, 16, 12), campur(wr, '#000', i * .05), [x, y, z])); }); },
   /** bukit/gunung di kejauhan: lebar, tinggi, warna, salju */
-  bukit(o = {}) { const lb = o.lebar ?? 30, t = o.tinggi ?? 8, wr = o.warna || campur(P.utama, this.warnaKabut, .35); return this.grup(o, () => { const m = this._b(geoBola(1, 40, 20), wr, [0, 0, 0], { s: [lb / 2, t, lb / 3], tepi: false }); m.castShadow = false; if (o.salju) this._b(geoBola(1, 30, 14), '#F4F7FF', [0, t * .72, 0], { s: [lb * .14, t * .32, lb * .1], tepi: false }); }); },
+  bukit(o = {}) { const lb = o.lebar ?? 30, t = o.tinggi ?? 8, wr = o.warna || campur(P.utama, this.warnaKabut, .35); return this.grup(o, () => { const m = this._b(geoBola(1, 40, 20), wr, [0, 0, 0], { s: [lb / 2, t, lb / 3], tepi: false, latar: true }); m.castShadow = false; if (o.salju) this._b(geoBola(1, 30, 14), '#F4F7FF', [0, t * .72, 0], { s: [lb * .14, t * .32, lb * .1], tepi: false, latar: true }); }); },
   batu(o = {}) { const u = o.ukuran ?? .5; return this.grup(o, () => this._b(new THREE.IcosahedronGeometry(u, 0), o.warna || '#8E8C94', [0, u * .6, 0], { s: [1.2, .75, 1], datar: true })); },
   /* --- kota & jalan --- */
   rumah(o = {}) {
@@ -70,7 +70,7 @@ Object.assign(DP, {
       const aspal = bahan({ warna: '#ffffff', peta: teksturPola('aspal', o.warna || '#4E525E'), unik: true, kasar: .95 }); aspal.map = aspal.map.clone(); aspal.map.repeat.set(pj / 6, lb / 6); aspal.map.needsUpdate = true;
       const m = new THREE.Mesh(geoBidang(pj, lb), aspal); m.rotation.x = -Math.PI / 2; m.position.y = .01; m.receiveShadow = true; this._induk().add(m);
       for (let x = -pj / 2 + 1; x < pj / 2; x += 3) { const s = new THREE.Mesh(geoBidang(1.6, .14), bahan({ warna: '#F2F2EA', kasar: .8 })); s.rotation.x = -Math.PI / 2; s.position.set(x, .02, 0); s.receiveShadow = true; this._induk().add(s); }
-      if (o.trotoar !== false) [-1, 1].forEach(s => this._b(geoKotak(pj, .18, 1.6, .03), o.warnaTrotoar || '#B9B6AE', [0, .09, s * (lb / 2 + .8)], { tepi: false }));
+      if (o.trotoar !== false) [-1, 1].forEach(s => this._b(geoKotak(pj, .18, 1.6, .03), o.warnaTrotoar || '#B9B6AE', [0, .09, s * (lb / 2 + .8)], { tepi: false, pijak: true }));
     });
   },
   lampuJalan(o = {}) {
@@ -168,14 +168,14 @@ Object.assign(DP, {
   koin(o = {}) {
     const r = o.r ?? .3, tb = r * .18, wr = o.warna || '#F4C430', kunci = `koin|${wr}|${o.tulisan || 'Rp'}`;
     let tex = M3.tekstur.get(kunci); if (!tex) { const cv = kanvasBaru(256, 256), c = cv.getContext('2d'); c.fillStyle = wr; c.fillRect(0, 0, 256, 256); c.strokeStyle = campur(wr, '#7A4A00', .55); c.lineWidth = 14; c.beginPath(); c.arc(128, 128, 104, 0, 7); c.stroke(); c.fillStyle = campur(wr, '#7A4A00', .6); c.font = `900 ${o.tulisan && o.tulisan.length > 2 ? 70 : 96}px ${FONT.judul}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(o.tulisan || 'Rp', 128, 136); tex = teksturKanvas(cv); tex.userData.bersama = true; M3.tekstur.set(kunci, tex); }
-    return this.grup(o, () => { const g = geoSilinder(r, r, tb, 40); const sisi = bahan({ warna: campur(wr, '#B07800', .3), logam: .6, kasar: .35, env: 1.2 }), muka = bahan({ warna: '#ffffff', peta: tex, logam: .55, kasar: .35, env: 1.2 }); const m = new THREE.Mesh(g, [sisi, muka, muka]); m.castShadow = true; m.position.y = r; m.rotation.x = Math.PI / 2; this._induk().add(m); if (gaya3D().tepi) { const t = new THREE.Mesh(g, bahanTepi(campur(wr, P.gelap, .7))); m.add(t); } });
+    return this.grup(o, () => { const g = geoSilinder(r, r, tb, 40); const sisi = bahan({ warna: campur(wr, '#B07800', .3), logam: .6, kasar: .35, env: 1.2 }), muka = bahan({ warna: '#ffffff', peta: tex, logam: .55, kasar: .35, env: 1.2 }); const m = new THREE.Mesh(g, [sisi, muka, muka]); m.castShadow = true; m.userData.padat = true; m.position.y = r; m.rotation.x = Math.PI / 2; this._induk().add(m); if (gaya3D().tepi) { const t = new THREE.Mesh(g, bahanTepi(campur(wr, P.gelap, .7))); m.add(t); } });
   },
   /** uang kertas generik (bukan uang asli): nilai ('100.000'), warna, tumpuk (jumlah lembar) */
   uang(o = {}) {
     const wr = o.warna || '#4FA36B', kunci = `uang|${wr}|${o.nilai || '100.000'}`;
     let tex = M3.tekstur.get(kunci); if (!tex) { const cv = kanvasBaru(512, 240), c = cv.getContext('2d'); c.fillStyle = wr; c.fillRect(0, 0, 512, 240); c.strokeStyle = campur(wr, '#ffffff', .5); c.lineWidth = 10; c.strokeRect(14, 14, 484, 212); c.fillStyle = campur(wr, '#ffffff', .25); c.beginPath(); c.arc(130, 120, 62, 0, 7); c.fill(); c.fillStyle = '#FFFFFF'; c.font = `900 64px ${FONT.judul}`; c.textAlign = 'right'; c.fillText(o.nilai || '100.000', 480, 150); c.font = `800 34px ${FONT.judul}`; c.fillText('RUPIAH', 480, 74); tex = teksturKanvas(cv); tex.userData.bersama = true; M3.tekstur.set(kunci, tex); }
     const n = o.tumpuk ?? 1;
-    return this.grup(o, () => { const mt = bahan({ warna: '#ffffff', peta: tex, kasar: .85, env: .2 }), sisi = bahan({ warna: campur(wr, '#ffffff', .4) }); for (let i = 0; i < n; i++) { const m = new THREE.Mesh(geoKotak(.62, .006, .29, 0), [sisi, sisi, mt, sisi, sisi, sisi]); m.position.set((acak(i) - .5) * .03, .003 + i * .007, (acak(i + 4) - .5) * .02); m.rotation.y = (acak(i * 3) - .5) * .12; m.castShadow = true; m.receiveShadow = true; this._induk().add(m); } });
+    return this.grup(o, () => { const mt = bahan({ warna: '#ffffff', peta: tex, kasar: .85, env: .2 }), sisi = bahan({ warna: campur(wr, '#ffffff', .4) }); for (let i = 0; i < n; i++) { const m = new THREE.Mesh(geoKotak(.62, .006, .29, 0), [sisi, sisi, mt, sisi, sisi, sisi]); m.userData.padat = true; m.position.set((acak(i) - .5) * .03, .003 + i * .007, (acak(i + 4) - .5) * .02); m.rotation.y = (acak(i * 3) - .5) * .12; m.castShadow = true; m.receiveShadow = true; this._induk().add(m); } });
   },
   /** grafik batang 3D: data [{nilai, label, warna}], tinggi (m untuk nilai maks), lebar (m per batang), jarak, mulai, jeda (stagger), lama, akhiran, desimal,
       angka (bool), ukuranAngka, ukuranLabel */

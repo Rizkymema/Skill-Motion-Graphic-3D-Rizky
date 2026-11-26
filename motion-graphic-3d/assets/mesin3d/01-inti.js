@@ -91,7 +91,7 @@ function rendererM3() {
 }
 
 /* ------------------------------------------------------------- geometri (dibagi, disimpan) */
-function geoSimpan(kunci, buat) { let g = M3.geo.get(kunci); if (!g) { g = buat(); g.userData.bersama = true; M3.geo.set(kunci, g); } return g; }
+function geoSimpan(kunci, buat, sdf) { let g = M3.geo.get(kunci); if (!g) { g = buat(); g.userData.bersama = true; if (sdf) g.userData.sdf = sdf; M3.geo.set(kunci, g); } return g; }
 const segQ = n => Math.max(3, Math.round(n * (gaya3D().seg || 1)));
 /** kotak bersudut bulat (w lebar x, h tinggi y, dl dalam z), pusat di tengah; normal halus di tepi */
 function geoKotak(w, h, dl, r = 0, m = 4) {
@@ -110,14 +110,14 @@ function geoKotak(w, h, dl, r = 0, m = 4) {
       else pos.setXYZ(i, x, y, z);
     }
     g.computeBoundingSphere(); return g;
-  });
+  }, { j: 'kotak', h: [w / 2, h / 2, dl / 2], r });
 }
-const geoBola = (r, ws = 32, hs = 22) => geoSimpan(`bola|${r}|${ws}|${hs}`, () => new THREE.SphereGeometry(r, segQ(ws), segQ(hs)));
-const geoSilinder = (ra, rb, h, n = 32) => geoSimpan(`sil|${ra}|${rb}|${h}|${n}`, () => new THREE.CylinderGeometry(ra, rb, h, segQ(n), 1));
-const geoKapsul = (r, p, n = 20) => geoSimpan(`kap|${r}|${p}|${n}`, () => new THREE.CapsuleGeometry(r, p, segQ(6), segQ(n)));
-const geoTorus = (R, r, n = 40) => geoSimpan(`tor|${R}|${r}|${n}`, () => new THREE.TorusGeometry(R, r, segQ(14), segQ(n)));
-const geoKerucut = (r, h, n = 28) => geoSimpan(`ker|${r}|${h}|${n}`, () => new THREE.ConeGeometry(r, h, segQ(n), 1));
-const geoBidang = (w, h) => geoSimpan(`bid|${w}|${h}`, () => new THREE.PlaneGeometry(w, h));
+const geoBola = (r, ws = 32, hs = 22) => geoSimpan(`bola|${r}|${ws}|${hs}`, () => new THREE.SphereGeometry(r, segQ(ws), segQ(hs)), { j: 'bola', r });
+const geoSilinder = (ra, rb, h, n = 32) => geoSimpan(`sil|${ra}|${rb}|${h}|${n}`, () => new THREE.CylinderGeometry(ra, rb, h, segQ(n), 1), { j: 'silinder', ra, rb, h2: h / 2 });
+const geoKapsul = (r, p, n = 20) => geoSimpan(`kap|${r}|${p}|${n}`, () => new THREE.CapsuleGeometry(r, p, segQ(6), segQ(n)), { j: 'kapsul', r, h2: p / 2 });
+const geoTorus = (R, r, n = 40) => geoSimpan(`tor|${R}|${r}|${n}`, () => new THREE.TorusGeometry(R, r, segQ(14), segQ(n)), { j: 'torus', R, r });
+const geoKerucut = (r, h, n = 28) => geoSimpan(`ker|${r}|${h}|${n}`, () => new THREE.ConeGeometry(r, h, segQ(n), 1), { j: 'silinder', ra: 0, rb: r, h2: h / 2 });
+const geoBidang = (w, h) => geoSimpan(`bid|${w}|${h}`, () => new THREE.PlaneGeometry(w, h), { j: 'kotak', h: [w / 2, h / 2, .01], r: 0 });
 
 /* ------------------------------------------------------------- bahan (material) */
 /** o: warna, kasar, logam, pancar (warna menyala), pancarKuat, tembus (0..1 opasitas), peta (Texture), datar, ganda, unik, dasar (tanpa cahaya) */
@@ -172,6 +172,8 @@ function mesh3(geo, o = {}) {
     const wr = typeof o.tepi === 'string' ? o.tepi : campur(o.warna ?? P.utama, P.gelap, .78);
     const t = new THREE.Mesh(geo, bahanTepi(wr)); t.userData.tepi = true; t.castShadow = false; t.receiveShadow = false; m.add(t);
   }
+  // anti-tembus (06-tabrak.js): benda padat diperiksa/dihindari; pijak = permukaan tempat kaki menapak; latar = langit/bukit/awan (tidak diperiksa)
+  m.userData.padat = o.padat !== false && !o.dasar && !o.latar; if (o.pijak) m.userData.pijak = true; if (o.latar) m.userData.latar = true;
   return m;
 }
 
@@ -296,7 +298,7 @@ function gambar3D(c, a, t) {
   r.shadowMap.needsUpdate = true;
   r.render(dn.scene, dn.kamera);
   c.drawImage(r.domElement, 0, 0, W, H);
-  M3.aktif = dn;
+  M3.aktif = dn; (M3.digambar || (M3.digambar = [])).push(dn);   // dunia yang tergambar di bingkai ini (cek anti-tembus)
   if (!MEMBANGUN) dn.daftarWajah();
   return dn;
 }

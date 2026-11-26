@@ -16,7 +16,7 @@ Semua ada di dalam satu HTML: Three.js r147 (MIT), mesin 3D, mesin 2D (lapisan t
 |---|---|
 | `assets/templat.html` | mesin 2D + pemutar + cek + ekspor (turunan templat motion-graphic) dengan tempat `three-js` dan `inti3d`; per video **hanya blok `konfig`** yang diganti |
 | `assets/three.min.js` | Three.js r147 (MIT), ditanam utuh oleh `rakit` |
-| `assets/mesin3d/01-inti.js … 05-efek.js` | mesin 3D: renderer, bahan + garis tepi, cahaya per keadaan, kamera, dunia `d.*`, tokoh 3D, benda, partikel, efek; digabung urut nama oleh `rakit` |
+| `assets/mesin3d/01-inti.js … 06-tabrak.js` | mesin 3D: renderer, bahan + garis tepi, cahaya per keadaan, kamera, dunia `d.*`, tokoh 3D, benda, partikel, efek, **anti-tembus** (kaki menapak, lengan tak tembus, cek clipping); digabung urut nama oleh `rakit` |
 | `contoh/kartun-bakso-motor-3d.konfig.js` | **acuan tampilan cerita**: storyboard 5 adegan yang sama dengan contoh motion-graphic 2D (jalan oranye + naik motor, warung sorot + duduk makan, mangkuk beruap tanpa tokoh, wajah di ubin hijau, malam mendorong motor), 21,6 dtk 9:16; cek BERES, ekspor 19,4 MB |
 | `contoh/infografis-uang-3d.konfig.js` | **acuan explainer/infografis**: studio berganti keadaan, HP 3D berlayar grafik 2D, papan harga, grafik batang 3D, pai 3D, celengan buatan sendiri (`d.grup`), konfeti, ajakan; 20,8 dtk; cek BERES |
 | `references/mesin.md` | **API dunia 3D** (`d.*`): kamera, cahaya/keadaan, latar, bentuk, katalog benda, layar 2D di benda 3D, data, partikel, tokoh 3D (pose, ekspresi, jalan, naik, pegang, efek), lapisan 2D di atas 3D, kecepatan |
@@ -61,7 +61,7 @@ Baca `references/storyboard.md`, `gaya.md`, `palet.md`, `dunia-topik.md`, `mesin
 3. **Storyboard** (tabel): `# · waktu · keadaan · dunia 3D + tokoh/aksi · kamera 3D · teks atas (bila penting) · subtitle · SFX · transisi`. Perubahan visual tiap 1,5–3 dtk; transisi bervariasi.
 4. **Build**: tulis `_kerja\konfig.js` (komentar kepala = paket visual; `KONFIG` dengan `gaya`, `suasana`, `tokoh`; `ADEGAN` dengan `suasana`, `kamera` 3D, `dunia(d)` dan bila perlu `gambar(g)` untuk teks/label 2D), lalu `python3 scripts/jalankan.py rakit _kerja/konfig.js _kerja/film.html`. Warna benda dari palet (`P.utama`, `campur(P.latar, P.gelap, .3)`); benda khas cerita yang belum ada dibangun dari bentuk dasar di `d.grup`.
 5. **Cek kualitas sendiri (wajib, berulang sampai beres)**:
-   - `python3 scripts/jalankan.py cek _kerja/film.html` sampai **BERES** (teks keluar layar/zona tombol, teks bertabrakan, subtitle menutupi wajah tokoh 3D, bingkai kosong, galat JavaScript/3D, WebGL). Saran juga dibaca (tokoh berpose sama > 3 dtk, ritme).
+   - `python3 scripts/jalankan.py cek _kerja/film.html` sampai **BERES** (teks keluar layar/zona tombol, teks bertabrakan, subtitle menutupi wajah tokoh 3D, bingkai kosong, galat JavaScript/3D, WebGL, **clipping 3D**: tokoh menembus benda/tokoh lain, benda saling tembus, kamera di dalam benda; cara memperbaiki di `references/mesin.md` §9b). Saran juga dibaca (tokoh berpose sama > 3 dtk, ritme).
    - `python3 scripts/jalankan.py kontak _kerja/film.html _kerja/kontak.jpg --n 24`, lalu **lihat sendiri** dan nilai jujur dengan checklist `storyboard.md` §5 + §5b: subjek tidak terpotong (9:16 sempit: lebar terlihat ±0,45 × jarak kamera), tidak ada benda menutupi wajah, bayangan menapak, tokoh duduk tepat di jok, warna mengikuti keadaan, aksi sesuai storyboard, kamera bergerak. Bingkai tertentu: `--t 0.5,1.2,3.0`.
    - Perbaiki, rakit, cek lagi. Jangan mengirim pratinjau sebelum keduanya beres.
 6. **Pratinjau**: `python3 scripts/jalankan.py ekspor _kerja/film.html _kerja/pratinjau.mp4` (±5–6× durasi di laptop saya; jalankan di latar dan sebut perkiraannya), lalu kirim **pratinjau.mp4 + film.html**.
@@ -89,6 +89,7 @@ Menu penutup: **Video berikutnya (Rekomendasi)** · **Versi rasio lain** · **Re
 - **Kamera 3D bergerak di setiap adegan** (dolly, orbit, ikut, geser; `gaya.md` §2), ada kedalaman (benda depan + subjek + latar + kabut), satu gerak utama per adegan, sudut bervariasi antar-adegan.
 - **Tokoh hidup** (permintaan 24 Nov 2026: tidak kaku): pose/ekspresi baru tiap 1,5–2,5 dtk, `bicara` saat dialog, `jalan`/`lari` untuk masuk-keluar, `lihat` ke lawan bicara, efek emosi di momen kunci; akting otomatis (napas, berat badan, mata, gestur saat bicara) jangan dimatikan tanpa alasan.
 - Warna kaya mengikuti keadaan adegan; garis tepi kartun bernuansa (otomatis); bayangan berwarna; lampu menyala (`d.lampu`, `d.sorot`); subtitle kecil gaya film; teks atas hanya hal penting; hook kuat 3 dtk dengan **benda utama topik**; SFX di setiap kejadian; ≥ 4 jenis transisi.
+- **Tanpa clipping** (permintaan 26 Nov 2026, `mesin.md` §9b): kaki menapak dan lengan/tangan tak tembus diurus mesin otomatis; tokoh menembus benda, benda saling tembus, dan kamera di dalam benda harus 0 di `cek` (geser posisi/lintasan, bukan `padat: false`).
 - **Tetap cepat** (`mesin.md` §9): ≤ 16 gedung, ≤ 250 partikel, ≤ 5 tokoh, lampu berbayang ≤ 2 per adegan; ukur md/bingkai bila adegan terasa berat (> 45 md → sederhanakan).
 - Checklist sebelum kirim: durasi pas, tidak ada bingkai kosong, tidak ada subjek/teks terpotong, teks terbaca ≥ 2 dtk, **tidak ada karakter/logo/merek pihak lain** (uang, kendaraan, gedung generik), fakta hanya dari sumber yang dicek.
 
@@ -101,4 +102,5 @@ Menu penutup: **Video berikutnya (Rekomendasi)** · **Versi rasio lain** · **Re
 - Jangan memakai satu palet untuk seluruh video, pastel seragam, atau neon; warna ikut keadaan tiap adegan.
 - Jangan mengubah blok `inti` templat atau `assets/mesin3d/` per video. Butuh fitur mesin baru → ubah mesin, uji ulang kedua contoh (`cek` BERES + `kontak` dilihat + ukur md/bingkai + `ekspor` sekali), catat di `references/mesin.md`.
 - Jangan memuat apa pun dari internet di dalam HTML (CDN Three.js, font, gambar).
+- Jangan menyembunyikan clipping dengan `padat: false`, kamera yang memotong, atau benda penutup; perbaiki penempatannya. `padat: false` hanya untuk yang memang menembus (hantu, cahaya).
 - Jangan mengirim lebih dari MP4 final + HTML setelah video jadi.

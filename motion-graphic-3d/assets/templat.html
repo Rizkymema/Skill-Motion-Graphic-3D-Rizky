@@ -1783,7 +1783,7 @@ function gambarAdegan(c, a, t) {
 }
 function adeganDi(T) { let i = A.findIndex(a => T >= a.mulai && T < a.akhir); return i < 0 ? A.length - 1 : i; }
 function seek(T, opsi = {}) {
-  T = jepit(T, 0, DURASI); BINGKAI = Math.round(T * FPS); REG.teks.length = 0; REG.subjek.length = 0; REG.sub.length = 0;
+  T = jepit(T, 0, DURASI); BINGKAI = Math.round(T * FPS); REG.teks.length = 0; REG.subjek.length = 0; REG.sub.length = 0; if (typeof M3 !== 'undefined') M3.digambar = [];
   if (!A.length) return;
   const i = adeganDi(T), a = A[i], b = A[i + 1], pr = A[i - 1];
   let tr = null;
@@ -2191,6 +2191,7 @@ function hasilCek(langkah = 0.25) {
   const catatW = (arr, t, pesan) => { const k = (arr === salah ? 'S' : 'R') + pesan; if (!jejak.has(k)) jejak.set(k, { arr, pesan, t: [] }); jejak.get(k).t.push(t); };
   for (let t = 0; t <= DURASI + 1e-6; t += langkah) {
     seek(t);
+    if (typeof periksaTembus3D === 'function') periksaTembus3D().forEach(s => catatW(salah, t, s));   // 3D: tembus antar-benda/tokoh, kamera
     const teks = REG.teks.filter(x => !x.tr), sub = REG.sub[0];
     teks.forEach(x => {
       lamaTeks[x.s] = (lamaTeks[x.s] || 0) + langkah;

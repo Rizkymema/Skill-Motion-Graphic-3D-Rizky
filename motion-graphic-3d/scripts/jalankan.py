@@ -24,7 +24,7 @@ from pathlib import Path
 AKAR = Path(__file__).resolve().parent.parent
 TEMPLAT = AKAR / 'assets' / 'templat.html'
 THREE = AKAR / 'assets' / 'three.min.js'          # Three.js r147 (MIT), ditanam utuh
-MESIN3D = AKAR / 'assets' / 'mesin3d'              # 01-inti.js … 05-efek.js, digabung urut nama
+MESIN3D = AKAR / 'assets' / 'mesin3d'              # 01-inti.js … 06-tabrak.js, digabung urut nama
 
 
 def data_uri(berkas):

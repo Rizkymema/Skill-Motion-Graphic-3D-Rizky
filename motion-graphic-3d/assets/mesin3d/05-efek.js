@@ -56,7 +56,7 @@ DP.awan = function (o = {}) {
   const grup = [];
   for (let i = 0; i < n; i++) {
     const g = new THREE.Group(), u = (2 + acak(i * 5 + 1) * 2) * uk;
-    for (let k = 0; k < 6; k++) { const r = u * (.45 + acak(i * 13 + k) * .4), m = mesh3(geoBola(1, 18, 12), { warna: wr, tepi: false, bayang: false, kasar: 1, env: .2, pancar: wr, pancarKuat: .25 }); m.scale.set(r, r * .78, r * .8); m.position.set((k - 2.5) * u * .42, r * .25 + (k % 2) * u * .18, (acak(k + i) - .5) * u * .5); g.add(m); }
+    for (let k = 0; k < 6; k++) { const r = u * (.45 + acak(i * 13 + k) * .4), m = mesh3(geoBola(1, 18, 12), { warna: wr, tepi: false, bayang: false, kasar: 1, env: .2, pancar: wr, pancarKuat: .25, latar: true }); m.scale.set(r, r * .78, r * .8); m.position.set((k - 2.5) * u * .42, r * .25 + (k % 2) * u * .18, (acak(k + i) - .5) * u * .5); g.add(m); }
     g.position.set(lerp(x0, x1, acak(i * 3)), lerp(y0, y1, acak(i * 7 + 2)), lerp(z0, z1, acak(i * 11 + 4)));
     this._induk().add(g); grup.push([g, g.position.x]);
   }

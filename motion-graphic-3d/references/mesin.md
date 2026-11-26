@@ -1,6 +1,6 @@
 # Mesin motion-graphic-3d: dunia 3D (API `d.*`)
 
-Dibaca di Tahap 2 (build) dan setiap revisi. Satu file HTML berisi tiga mesin: **Three.js r147** (`assets/three.min.js`, MIT), **mesin 3D** (`assets/mesin3d/01-inti.js … 05-efek.js`) dan **mesin 2D** (blok `inti` di `assets/templat.html`: lapisan 2D, subtitle, suara, transisi, cek, ekspor; API di `references/mesin-2d.md`). `jalankan.py rakit` menanam ketiganya + blok `konfig` jadi satu `film.html` yang jalan offline. Per video hanya `konfig.js` (KONFIG + ADEGAN) yang ditulis.
+Dibaca di Tahap 2 (build) dan setiap revisi. Satu file HTML berisi tiga mesin: **Three.js r147** (`assets/three.min.js`, MIT), **mesin 3D** (`assets/mesin3d/01-inti.js … 06-tabrak.js`) dan **mesin 2D** (blok `inti` di `assets/templat.html`: lapisan 2D, subtitle, suara, transisi, cek, ekspor; API di `references/mesin-2d.md`). `jalankan.py rakit` menanam ketiganya + blok `konfig` jadi satu `film.html` yang jalan offline. Per video hanya `konfig.js` (KONFIG + ADEGAN) yang ditulis.
 
 ## 1. Prinsip
 - **Adegan ber-`dunia`** digambar Three.js: `dunia(d)` dipanggil **sekali** (membangun tempat, benda, tokoh), lalu tiap bingkai mesin memperbarui animasi dari waktu `t` (anim, tokoh, partikel) dan `gerak(d, t, dur, T)` bila ada. Hasil 3D ditaruh di kanvas, lalu `gambar(g, t, d, T)` (lapisan 2D: teks atas, label, notif, balon, garis cepat) dan subtitle ditumpuk di atasnya. Adegan tanpa `dunia` = adegan 2D penuh (mesin-2d.md).
@@ -10,6 +10,7 @@ Dibaca di Tahap 2 (build) dan setiap revisi. Satu file HTML berisi tiga mesin: *
 - Waktu di dalam adegan = detik adegan (`muncul: 1.2`) atau rujukan narasi (`muncul: 'L04.w3'`, `mulai: 'L05'`), sama dengan mesin 2D.
 - Warna diturunkan dari palet keadaan adegan `P` (`P.utama`, `P.aksen`, `campur(P.latar, P.gelap, .3)`), hex hanya untuk warna tetap (kulit, baju, lampu, kayu).
 - Garis tepi kartun, bayangan, pantulan lembut, kabut jarak, cahaya per keadaan: otomatis.
+- **Anti-tembus (clipping) otomatis** (§9b): kaki selalu menapak, tangan/lengan/properti tidak pernah masuk ke badan, kepala, tokoh lain, atau benda; benda saling tembus, tokoh menembus benda, dan kamera di dalam benda membuat `cek` SALAH.
 
 ## 2. KONFIG (tambahan untuk 3D; sisanya = mesin-2d.md §2)
 ```js
@@ -60,7 +61,7 @@ Transisi `masuk` sama dengan mesin 2D (`potong lebur gelap whip zoom wipe iris g
 - Latar: bawaan gradien warna `P.latar` (layar). `d.studio()` = lantai + dinding melengkung tanpa sambungan (latar motion graphic klasik untuk diagram/benda). `d.langit()` = kubah langit + kabut horizon. `d.ruang()` = ruangan. `d.latar(atas, bawah)` gradien sendiri.
 
 ## 6. Fungsi dunia `d.*`
-Opsi umum semua benda: `posisi`, `putar`, `skala`, `nama` (dipakai `d.nama.x`, kamera `ikuti`, `g.layar('x')`), `warna`, bahan (`kasar`, `logam`, `pancar` warna menyala + `pancarKuat`, `tembus` 0..1, `dasar: true` tanpa cahaya, `tepi: false | '#warna'`, `bayang: false`), dan **animasi**:
+Opsi umum semua benda: `posisi`, `putar`, `skala`, `nama` (dipakai `d.nama.x`, kamera `ikuti`, `g.layar('x')`, dan pesan `cek`), `pijak: true` (permukaan tempat kaki menapak: panggung, tangga, peti yang dinaiki), `padat: false` (boleh ditembus, mis. hantu, cahaya, kabut buatan; tidak diperiksa), `warna`, bahan (`kasar`, `logam`, `pancar` warna menyala + `pancarKuat`, `tembus` 0..1, `dasar: true` tanpa cahaya, `tepi: false | '#warna'`, `bayang: false`), dan **animasi**:
 | Opsi | Isi |
 |---|---|
 | `muncul: t`, `masuk` | `pop` (bawaan, membal) · `naik` · `jatuh` (memantul) · `tumbuh` (dari bawah) · `geser` · `putar`; `lamaMuncul`, `jarakMasuk` |
@@ -111,6 +112,7 @@ Definisi di `KONFIG.tokoh.<id>`: `kulit`, `rambut` (`pendek poni jabrik cepak pa
 | `efek: [[t, 'jenis', lama]]` atau `'jenis'` | `keringat uap tanya seru hati bintang zzz ide marah kilau` di sekitar kepala |
 | `hidup: false`, `gestur: false`, `kedip: false` | matikan akting otomatis |
 | `anim: [[t, { posisi }]]` | memindah tokoh tanpa langkah (meluncur, didorong) |
+| `padat: false` | tokoh boleh menembus (hantu); anti-tembus dan cek dimatikan untuk tokoh ini |
 
 **Pose** (nama sama dengan motion-graphic 2D): `berdiri santai lambai tunjuk tunjukAtas presentasi pikir sedekap kaget hore angkatBahu sedih marah bingung pegangHp telepon duduk dudukHp dudukTegang dudukLesu dudukMakan menggambar ketik minum jongkok jongkokBimbing takut bawaKardus serahkan bimbing peganKepala makan makanKiri minumBerdiri naikMotor setir dorong baca tepuk angkat joget tidur lari`. Pose duduk: pinggul 0,52 m (pas di `kursi`); pakai `naik: kursi` supaya tepat di jok.
 **Pose sendiri** `KONFIG.pose3d.nama`: `lKi`/`lKa` = lengan kiri/kanan `[maju, samping, putar ke dalam, tekuk siku]` (maju 90 = lurus ke depan, samping 90 = mendatar ke samping, 180 = ke atas; putar −90 membuat siku menekuk ke atas seperti melambai), `kKi`/`kKa` = kaki `[maju, samping, tekuk lutut]`, `badan [condong, miring, putar]`, `kepala [angguk, miring, toleh]`, `turun` (m), penanda `duduk gestur goyang gores ketik tepuk joget gemetar loncat rebah bahu depan`. Uji pose baru di lembar kontak dari dua sudut sebelum dipakai.
@@ -130,5 +132,14 @@ Diukur 26 Nov 2026 (contoh bakso, 1080×1920, GPU lewat ANGLE juga di browser ta
 - Pemutar pindah ke mode Cepat (setengah resolusi) bila < ±22 bingkai/dtk; ekspor tetap 1080p.
 - Butuh WebGL (akselerasi grafis). Tanpa WebGL, `cek` menulis SALAH "WebGL tidak tersedia".
 
+## 9b. Anti-tembus / clipping (`assets/mesin3d/06-tabrak.js`, sejak 26 Nov 2026)
+Permintaan saya: "masih ada clipping 3D objek … agar bug itu hilang di setiap video". Tiga lapis, berlaku untuk semua video tanpa ditulis di konfig:
+1. **Kaki menapak** tiap bingkai: telapak terendah diletakkan tepat di lantai (`posisi` y tokoh) atau permukaan `pijak` di bawahnya (trotoar `d.jalan`, benda ber-`pijak: true`). Jalan, jongkok, angkat tidak melayang atau tenggelam. Pose duduk/naik/tidur tidak diubah; pose loncat (kaget, hore) boleh di udara tetapi tidak di bawah lantai.
+2. **Lengan tak tembus** tiap bingkai: siku, lengan bawah, pergelangan, telapak, ujung jari, dan properti di tangan dijauhkan dari badan, pinggul, kepala, paha/betis sendiri, badan/kepala tokoh lain, dan benda padat dalam jangkauan, dengan IK kecil (Levenberg–Marquardt atas 4 sudut lengan; bahu lebih dulu, siku belakangan; maks. ±85° dari pose). Hasil: tangan berhenti TEPAT di permukaan (sedekap di depan dada, pegang kepala, tangan bertumpu di meja, mendorong motor, menyentuh stang). Uji 26 Nov 2026: tembus 3–6 cm (sedekap, pikir, makan, pegang kepala, takut) jadi 0 cm; biaya 0,1–4 md/bingkai.
+3. **`cek` SALAH** (wajib diperbaiki di konfig, karena ini soal penempatan): `tokoh "x" menembus <benda>`, `tokoh "x" dan "y" saling menembus`, `<benda A> dan <benda B> saling menembus` (benda tipis seperti koin pun), `kamera di dalam/terlalu dekat <benda>`, `kamera menembus tokoh`. Toleransi 2,5 cm; kamera 12 cm. Nama di pesan = `nama` benda, atau jenisnya (`meja`, `motor`, `ruang` …).
+- Bentuk jarak (SDF) tiap benda padat: kotak bulat, bola, silinder/kerucut, kapsul, torus, benda bubut; lainnya kotak batas. Bagian-bagian satu benda (satu panggilan `d.*` atau satu `d.grup`) tidak dibandingkan satu sama lain.
+- Dikecualikan otomatis: tokoh dengan benda yang ia `naik`-i; tokoh berpose duduk di atas benda berjok (kursi, sofa, kasur) walau tanpa `naik`; langit, tanah, studio, bukit, awan, partikel, uap, teks 3D, layar; permukaan `pijak`.
+- Cara memperbaiki SALAH: geser `posisi` tokoh/benda (ingat lebar tokoh ±0,45 m, kendaraan ±0,4 × 1,5 m), ubah `jalan`/`anim` supaya lintasan tidak memotong benda, beri benda yang dinaiki `pijak: true`, hadapkan laptop/meja ke tokoh, hentikan benda jatuh di atas permukaan lalu menyusut/`hilang` (contoh koin masuk celengan), mundurkan kamera. `padat: false` hanya untuk yang memang menembus (hantu, cahaya).
+
 ## 10. Menambah fitur mesin
-Benda/pose/efek baru yang akan dipakai lagi: tulis di `assets/mesin3d/*.js` (benda di `04-benda.js` lewat `Object.assign(DP, {…})`, pose di `POSE3D` `03-tokoh.js`, efek di `05-efek.js`); khusus satu video boleh di konfig lewat `d.grup` + bentuk dasar. Setelah mengubah mesin: rakit `contoh/kartun-bakso-motor-3d.konfig.js` dan `contoh/infografis-uang-3d.konfig.js`, `cek` BERES, `kontak` dilihat, ukur md/bingkai (`seek` 30 bingkai), `ekspor` sekali, catat di dokumen ini. `assets/templat.html` (mesin 2D + pemutar) hanya diubah bila memang perlu; skill `motion-graphic` (2D) tidak ikut diubah.
+Benda/pose/efek baru yang akan dipakai lagi: tulis di `assets/mesin3d/*.js` (benda di `04-benda.js` lewat `Object.assign(DP, {…})` dan tambahkan namanya ke daftar jenis di akhir `06-tabrak.js`, pose di `POSE3D` `03-tokoh.js`, efek di `05-efek.js`; bagian benda dibuat lewat `this._b`/`mesh3` supaya ikut anti-tembus, `new THREE.Mesh` hanya untuk layar/kaca/teks atau beri `userData.padat = true`); khusus satu video boleh di konfig lewat `d.grup` + bentuk dasar. Setelah mengubah mesin: rakit `contoh/kartun-bakso-motor-3d.konfig.js` dan `contoh/infografis-uang-3d.konfig.js`, `cek` BERES, `kontak` dilihat, ukur md/bingkai (`seek` 30 bingkai), `ekspor` sekali, catat di dokumen ini. `assets/templat.html` (mesin 2D + pemutar) hanya diubah bila memang perlu; skill `motion-graphic` (2D) tidak ikut diubah.

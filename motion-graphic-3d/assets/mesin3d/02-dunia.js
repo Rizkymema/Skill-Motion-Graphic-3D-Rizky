@@ -220,7 +220,7 @@ class Dunia3D {
   kerucut(o = {}) { const r = o.r ?? .5, h = o.tinggi ?? 1; return this._bentuk(geoKerucut(r, h, o.sisi ?? 28), h / 2, o); }
   donat(o = {}) { const R = o.R ?? .5, r = o.r ?? .16; return this._bentuk(geoTorus(R, r), R + r, o); }
   /** bidang tegak menghadap +z (atau lantai: true = rebah); peta = Texture; dasar: true = tanpa cahaya */
-  bidang(o = {}) { const w = o.lebar ?? 1, h = o.tinggi ?? 1, g = new THREE.Group(), m = new THREE.Mesh(geoBidang(w, h), o.bahan || bahan(Object.assign({ ganda: true }, o, { unik: !!o.peta || o.unik }))); m.receiveShadow = !o.dasar; m.castShadow = !!o.bayang; if (o.lantai) { m.rotation.x = -Math.PI / 2; m.position.y = .005; } else m.position.y = o.pusat ? 0 : h / 2; g.add(m); g.userData.mesh = m; return this.pasang(g, o); }
+  bidang(o = {}) { const w = o.lebar ?? 1, h = o.tinggi ?? 1, g = new THREE.Group(), m = new THREE.Mesh(geoBidang(w, h), o.bahan || bahan(Object.assign({ ganda: true }, o, { unik: !!o.peta || o.unik }))); m.receiveShadow = !o.dasar; m.castShadow = !!o.bayang; m.userData.padat = !o.lantai && o.padat !== false; if (o.lantai) { m.rotation.x = -Math.PI / 2; m.position.y = .005; } else m.position.y = o.pusat ? 0 : h / 2; g.add(m); g.userData.mesh = m; return this.pasang(g, o); }
   /** bentuk dari jalur 2D (THREE.Shape) diekstrusi: titik [[x,y],…] atau shape; tebal, bevel */
   ekstrusi(o = {}) {
     let shape = o.shape; if (!shape) { shape = new THREE.Shape(); (o.titik || [[0, 0], [1, 0], [0, 1]]).forEach(([x, y], i) => (i ? shape.lineTo(x, y) : shape.moveTo(x, y))); shape.closePath(); }
@@ -239,6 +239,8 @@ Dunia3D.prototype.selesaiBangun = function () {
   // pusat bayangan matahari = sasaran kamera awal (atau a.pusatBayang); lingkup = luas (m)
   const a = this.a;
   this.perbarui(0, a.mulai);   // keadaan t = 0 (anim, tokoh) sebelum kamera awal dihitung → kamera ikuti + hadap bawaan deterministik
+  daftarPadat(this);           // anti-tembus: benda padat + permukaan pijak (06-tabrak.js)
+  this.perbarui(0, a.mulai);   // sekali lagi dengan daftar padat (kaki menapak, lengan tidak menembus)
   aturKamera3D(this, a, 0, a.mulai); this.kameraAwal = this.kamera.position.clone();
   this._pusatBayang = a.pusatBayang || (this._ke ? this._ke.slice() : [0, 1, 0]);
   const sm = this.matahari.shadow.camera, L = this.luas; sm.left = -L; sm.right = L; sm.top = L; sm.bottom = -L; sm.near = .5; sm.far = 80; sm.updateProjectionMatrix();
@@ -252,7 +254,7 @@ Dunia3D.prototype.cahayaIkutKamera = function () {
   const kp = this.kamera.position; this.cahayaIsi.position.set(kp.x, kp.y + 1.5, kp.z); this.cahayaIsi.target.position.set(c[0], 1, c[2]);
 };
 Dunia3D.prototype.perbarui = function (t, T) {
-  this.t = t; this.T = T;
+  this.t = t; this.T = T; this._cap = (this._cap || 0) + 1;
   for (const f of this.upd) { try { f(t, T); } catch (e) { if (!this._galat) { this._galat = 1; console.error(e); catatan.push('Galat animasi 3D di adegan ' + this.a.id + ': ' + e.message); } } }
   for (const id in this.para) this.para[id].perbarui(t, T);
   if (this.a.gerak) { try { this.a.gerak(this, t, this.a.d, T); } catch (e) { if (!this._galat2) { this._galat2 = 1; console.error(e); catatan.push('Galat di gerak adegan ' + this.a.id + ': ' + e.message); } } }
