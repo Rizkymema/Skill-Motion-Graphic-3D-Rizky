@@ -1,5 +1,5 @@
 /* =====================================================================
-   TIMBANGAN DAGING v2 — dibuat ulang dengan motion-graphic-3d versi baru (bidikan otomatis, tokoh v2, pose bercerita, katalog benda,
+   TIMBANGAN DAGING v2 — dibuat ulang dengan kartun-3d (dulu motion-graphic-3d), gaya sinematik (bidikan otomatis, tokoh v2, pose bercerita, katalog benda,
    cahaya otomatis, anti-tembus). Cerita, waktu, dan suara (ElevenLabs per tokoh + efek + musik) sama dengan versi pengguna.
    PAKET VISUAL: dunia = gudang beras (dinding bata, karung goni menjulang, bohlam gantung, rolling door) · benda utama = timbangan dacin
    berkarat + timbangan digital · tokoh = Pak Darmo (gemuk, singlet, kumis), Ujang (kurus, kemeja kotak, topi), Mbok Sari (nenek, kebaya,
@@ -7,7 +7,7 @@
    → hijau busuk → siang · kamera = bidikan otomatis (dua tokoh, atas bahu, close-up, sisipan benda), low angle ke makhluk.
    ===================================================================== */
 const KONFIG = {
-  judul: 'Timbangan Daging', rasio: '9:16', fps: 30, gaya: 'kartun', suasana: 'sorot',
+  judul: 'Timbangan Daging', rasio: '9:16', fps: 30, gaya: 'sinematik', suasana: 'sorot',
   subtitle: { tampil: true }, durasi: 'L14.akhir+5', volumeSfx: .34, sfxTransisi: false,
   tokoh: {
     darmo: { tubuh: 'gemuk', kulit: '#C68A62', rambut: 'cepak', warnaRambut: '#1E1A16', baju: '#EDE8DC', kerah: 'singlet', celana: '#5A4E40', sepatu: '#3A2A1E', kumis: true },

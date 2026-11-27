@@ -1,11 +1,11 @@
-"""Alat bantu Claude untuk skill motion-graphic-3d (turunan alat motion-graphic).
+"""Alat bantu Claude untuk skill kartun-3d (dulu motion-graphic-3d; gabungan skill 3D motion-graphic-3d + kartun-stickman-3d sejak 27 Nov 2026; motion-graphic 2D tetap skill sendiri).
 
 Videonya sendiri tetap SATU file HTML mandiri: animasi, cek kualitas, dan encoder MP4 (WebCodecs) ada di
 dalam HTML, jadi pengguna cukup membukanya di Chrome/Edge lalu menekan "Ekspor MP4". Skrip ini hanya
 merakit file itu (menanam Three.js r147 + mesin 3D assets/mesin3d/*.js) dan "menekan tombolnya" di browser tanpa layar (Playwright), supaya Claude bisa melihat
 bingkai sendiri dan mengunggah otomatis. Tidak memakai ffmpeg.
 
-  rakit     <konfig.js> <keluar.html> [--narasi narasi.mp3 --naskah naskah.txt] [--baris DIR] [--musik musik.mp3 --vol-musik 0.3 --redam-musik 0.3] [--sfx DIR]
+  rakit     <konfig.js> <keluar.html> [--narasi narasi.mp3 --naskah naskah.txt] [--baris DIR] [--suara-edge DIR (hasil suara_edge.py: waktu kata persis)] [--musik musik.mp3 --vol-musik 0.3 --redam-musik 0.3] [--sfx DIR]
   cek       <film.html>                      cek kualitas (JSON), kode keluar 0 = BERES
   kontak    <film.html> <keluar.jpg> [--n 24 | --t 1,2.5,4]
   bingkai   <film.html> <detik> <keluar.png>
@@ -70,6 +70,12 @@ def rakit(a):
                 cocok = [f for f in d.iterdir() if f.stem.lower() == b['id'].lower()]
                 if cocok:
                     b['src'] = data_uri(cocok[0])
+    if a.suara_edge:   # hasil scripts/suara_edge.py: <id>.mp3 + suara.json (mulai/durasi per baris + waktu tiap kata persis dari Edge TTS)
+        d = Path(a.suara_edge); sj = json.loads((d / 'suara.json').read_text(encoding='utf-8'))
+        teks = {b['id']: b.get('teks', '') for b in baca_naskah(a.naskah)} if a.naskah else {}
+        suara = {'mulai': sj['baris'][0]['mulai'] if sj.get('baris') else a.mulai, 'kata': sj.get('kata', []), 'baris': []}
+        for b in sj.get('baris', []):
+            suara['baris'].append({'id': b['id'], 'teks': teks.get(b['id'], ''), 'mulai': b['mulai'], 'durasi': b['durasi'], 'src': data_uri(d / Path(b['src']).name)})
     if a.musik:
         suara = suara or {}
         suara['musik'] = {'src': data_uri(a.musik), 'vol': a.vol_musik, 'redam': a.redam_musik}
@@ -220,7 +226,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest='perintah', required=True)
     p = sub.add_parser('rakit'); p.add_argument('konfig'); p.add_argument('keluar')
-    p.add_argument('--naskah'); p.add_argument('--narasi'); p.add_argument('--baris'); p.add_argument('--mulai', type=float, default=0.3)
+    p.add_argument('--naskah'); p.add_argument('--narasi'); p.add_argument('--baris'); p.add_argument('--suara-edge', help='folder hasil suara_edge.py (suara.json + <id>.mp3)'); p.add_argument('--mulai', type=float, default=0.3)
     p.add_argument('--musik'); p.add_argument('--vol-musik', type=float, default=0.3); p.add_argument('--redam-musik', type=float, default=0.3, help='musik saat dialog = vol × redam (disesuaikan per kalimat)')
     p.add_argument('--musik-utuh', action='store_true', help='musik sepanjang video, jangan di-loop'); p.add_argument('--sfx'); p.set_defaults(f=rakit)
     p = sub.add_parser('cek'); p.add_argument('html'); p.set_defaults(f=cek)

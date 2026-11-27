@@ -2,7 +2,9 @@
 
 Dibaca di Tahap 1 (3 konsep) dan Tahap 2 (build). Gaya menentukan **bahan dan cara menyala**; storyboard dan topik menentukan **apa yang ada di dunia** (`references/dunia-topik.md`); keadaan adegan menentukan **warna dan cahaya** (`references/palet.md`).
 
-## 1. Empat gaya bahan (`KONFIG.gaya`)
+## 1. Gaya bahan (`KONFIG.gaya`) — bawaan **`sinematik`** (sejak 27 Nov 2026)
+**`sinematik`** (bawaan, Rekomendasi): tokoh dan benda tetap kartun, tetapi dirender seperti film — cahaya HDR, bayangan lembut, relief bahan, latar kabur menurut jarak ke subjek, bloom lampu, warna film (sorot hangat, bayang dingin), vignet, butir halus, garis tepi tipis (`mesin.md` §5b). Empat gaya di bawah tetap tersedia; `KONFIG.sinema: true` menambahkan pasca-proses sinematik ke gaya mana pun. Video yang seluruhnya 2D datar: skill `motion-graphic` (terpisah, gaya berbeda).
+
 | | Kartun (bawaan) | Clay | Mainan | Lowpoly |
 |---|---|---|---|---|
 | `gaya` | `kartun` | `clay` | `mainan` | `lowpoly` |
@@ -11,7 +13,7 @@ Dibaca di Tahap 1 (3 konsep) dan Tahap 2 (build). Gaya menentukan **bahan dan ca
 | Latar khas | dunia cerita (`langit` + `tanah` + `kota`/`ruang`/`warung`) atau `studio` | `studio` dengan `pola` (`karpet`, `kayu`) | `studio` polos terang, benda besar di tengah | `langit` + `bukit` + `pohon` cemara, `studio` |
 | Tokoh | tokoh 3D bawaan (§ mesin.md 7) | sama, tanpa garis | sama, mengilap | sama, bersisi |
 
-Konsep A di Tahap 1 selalu **`kartun`** dengan keadaan terkuat untuk ceritanya; B dan C beda **dunia dan keadaan/warna** (boleh beda gaya bila cocok). `KONFIG.bahan` menimpa per video (mis. `{ tepi: 5 }` garis lebih tebal, `{ env: .8 }` lebih mengilap).
+Konsep A di Tahap 1 selalu **`sinematik`** dengan keadaan terkuat untuk ceritanya; B dan C beda **dunia dan keadaan/warna** (boleh beda gaya bila cocok). `KONFIG.bahan` menimpa per video (mis. `{ tepi: 5 }` garis lebih tebal, `{ env: .8 }` lebih mengilap).
 
 ## 2. Tata kamera 3D (pengganti parallax 2D)
 - **Adegan bertokoh: pakai BIDIKAN OTOMATIS** (`mesin.md` §4a), bukan koordinat manual. Satu entri bidikan per baris dialog atau tiap 1,5–3 dtk; yang bicara selalu `bidik`/`b` di `atasBahu`; `dua` untuk pembuka dan reaksi; `benda` untuk sisipan (timbangan, layar, barang bukti) di sela kalimat; `wajah` di kalimat puncak/emosi; `tinggi: 'rendah'` untuk tokoh yang menakutkan/berkuasa.

@@ -1,4 +1,4 @@
-/* Contoh ACUAN motion-graphic-3d: storyboard yang sama dengan contoh motion-graphic (kartun-bakso-motor), dibangun ulang dalam dunia 3D.
+/* Contoh ACUAN kartun-3d (gaya sinematik): storyboard yang sama dengan contoh motion-graphic (kartun-bakso-motor), dibangun ulang dalam dunia 3D.
    Gaya kartun (plastik lembut + garis tepi bernuansa, acuan warna RicksClips3000), 9:16, ±22 dtk, tanpa narasi.
    Pamerkan: warna berganti MENGIKUTI KEADAAN tiap adegan (oranye → sorot → oranye → hijau → malam), tokoh 3D HANYA bila storyboard menyebutnya
    (adegan 3 tanpa tokoh) dan melakukan aksi cerita (naik motor, duduk makan, mendorong motor), kamera 3D selalu bergerak (ikut motor, dolly,
@@ -14,7 +14,7 @@ const KONFIG = {
   judul: 'Pak Joko dan Bakso Terakhir 3D',
   rasio: '9:16',
   fps: 30,
-  gaya: 'kartun',
+  gaya: 'sinematik',
   suasana: 'siang',
   tokoh: {
     joko: { kulit: '#E8B48C', rambut: 'pendek', warnaRambut: '#24170F', baju: '#2F6FB0', kerah: 'kemeja', celana: '#262C46', sepatu: '#3A2418', sol: '#D9D4CC', warnaMata: '#4A3020' }
@@ -112,5 +112,6 @@ const ADEGAN = [
       d.tokoh('joko', { pose: 'dorong', jalan: { dari: [-.95, -1.6], ke: [1.45, -1.6], mulai: .4, lama: 4.2 }, ekspresi: [[0, 'kaget'], [2.2, 'sedih']], efek: [[2.4, 'keringat', 2.6]] });
       d.ikon('peringatan', { posisi: [.2, 1.9, -1.6], ukuran: .5, warna: P.kedua, muncul: 1.0, denyut: { laju: 1.6, kuat: .08 }, anim: [[0, { posisi: [.2, 1.9, -1.6] }], [.4, { posisi: [.2, 1.9, -1.6] }], [4.6, { posisi: [2.6, 1.9, -1.6] }, 'inOutSine']] });
     },
-    gambar(g, t) { g.teksMasuk('BENSIN *HABIS*', 540, 300, t, { mulai: 1.0, ukuran: 88, gaya: 'pop', aksen: P.kedua, garis: P.gelap, tebalGaris: 12, maks: 900 }); } }
+    gambar(g, t) { g.teksMasuk('BENSIN *HABIS*', 540, 300, t, { mulai: 1.0, ukuran: 88, gaya: 'pop', aksen: P.kedua, garis: P.gelap, tebalGaris: 12, maks: 900 });
+      if (t > 2.4) g.label('Follow + komen: pernah begini?', 540, 470, { ukuran: 42, warna: P.terang, warnaTeks: P.gelap, ikon: 'hati', skala: maju(t, 2.4, .4, 'outBack') }); } }   // ajakan wajib (kartun-3d)
 ];

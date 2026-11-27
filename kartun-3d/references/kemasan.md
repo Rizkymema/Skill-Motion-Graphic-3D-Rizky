@@ -24,7 +24,7 @@ Maks. ±5 baris (±400 karakter) sebelum sumber dan hashtag:
 - **Subjek (hasil terbaik)**: tokoh bergaya film ini dari Flow dengan prompt B → `_kerja/thumbnail/potong/`; atau gambar dari saya.
 - **Tata letak** (`--tata`, bawaan auto): judol/uang/isu → `label`, cerita/kebiasaan → `sorot`, data/sejarah → `kertas`, kejahatan/misteri → `dosir`.
 - **Wajib di setiap video, tanpa bertanya** (aturan semua skill sejak 25 Nov 2026, `_thumbnail/PANDUAN.md` §0 + §5). Hasilnya selalu bergambar: kalau bingkai bersih kurang dari 4, mesin memotret sisanya dari MP4 final.
-- Jalankan: `<py> <repo>/_thumbnail/otomatis.py "<folder video>" --teks "<2–5 kata, satu *kata*, beda dari judul>" --judul "<judul terpilih>" --gaya motion-graphic-3d --subjek-desk "<subjek, bahasa Inggris, tanpa tempat>" --latar-desk "<tempat/suasana, bahasa Inggris>"` → `thumbnail.png` (16:9) + `thumbnail_short.png` (9:16) + `prompt-thumbnail.md` di akar folder video.
+- Jalankan: `<py> <repo>/_thumbnail/otomatis.py "<folder video>" --teks "<2–5 kata, satu *kata*, beda dari judul>" --judul "<judul terpilih>" --gaya kartun-3d --subjek-desk "<subjek, bahasa Inggris, tanpa tempat>" --latar-desk "<tempat/suasana, bahasa Inggris>"` → `thumbnail.png` (16:9) + `thumbnail_short.png` (9:16) + `prompt-thumbnail.md` di akar folder video.
 - Lihat kedua hasil di ±160 px (teks terbaca, subjek tidak tertutup, tanpa sisa caption). Laporan menyertakan judul terpilih + 2 cadangan dan **prompt A** dari `prompt-thumbnail.md` (siap ditempel ke Gemini/ChatGPT/Flow).
 
 ## 4. Lainnya
@@ -35,7 +35,7 @@ Maks. ±5 baris (±400 karakter) sebelum sumber dan hashtag:
 - **Kategori**: bawaan `categoryId` 27 (Pendidikan); 24 (Hiburan) untuk cerita/komedi, 22 untuk opini/gaya hidup.
 
 ## 5. Unggah
-Lewat skill `unggah-youtube`, folder **`Hasil Video\Motion Graphic 3D\Umum\<tanggal> <Judul>\`** (`D:\automation\Video AI\Hasil Video\Motion Graphic 3D\Umum\…`; cloud relatif ke root repo): MP4 final + `thumbnail.png` + `youtube.json` + `info YouTube.md` + `<Judul>.html` (file animasi, permintaan saya), lalu `_kerja\` dibuang setelah terunggah (kecuali mau revisi). Channel = pilihan di dialog persetujuan Tahap 2. Di cloud ikuti bagian "Sesi cloud" CLAUDE.md (Balasin AI, MP4 ≤ 50 MB; ekspor bawaan sudah dibatasi ±46 MB).
+Lewat skill `unggah-youtube`, folder **`Hasil Video\Kartun 3D\<seri atau Umum>\<tanggal> <Judul>\`** (`D:\automation\Video AI\Hasil Video\Kartun 3D\…`; video lama di `Motion Graphic 3D\` dan `Kartun Stickman 3D\`; video 2D motion-graphic punya foldernya sendiri `Motion Graphic\`; cloud relatif ke root repo): MP4 final + `thumbnail.png` + `youtube.json` + `info YouTube.md` + `<Judul>.html` (file animasi, permintaan saya), lalu `_kerja\` dibuang setelah terunggah (kecuali mau revisi). Channel = pilihan di dialog persetujuan Tahap 2. Di cloud ikuti bagian "Sesi cloud" CLAUDE.md (Balasin AI, MP4 ≤ 50 MB; ekspor bawaan sudah dibatasi ±46 MB).
 **Kiriman file ke saya**: MP4 final + file HTML. Laporan satu pesan: link/jadwal tayang, judul + 2 cadangan, deskripsi, hashtag, ide thumbnail.
 
 ## 6. Evaluasi hari ke-7

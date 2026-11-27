@@ -1,19 +1,27 @@
-"""Musik latar per babak dari Epidemic Sound untuk skill motion-graphic-3d (sejak 27 Nov 2026, permintaan "tambahkan musik pengiring
-yang bagus dan cocok dari Epidemic"). Satu lagu datar sepanjang video (uji Timbangan Daging: "Dead Silence" + hening ±20 dtk di
-tengah) terasa kosong; film memakai musik yang BERGANTI mengikuti babak cerita.
+r"""Musik video untuk SEMUA skill (sumber utama di _bersama/audio/, sejak 27 Nov 2026; salinannya = kartun-3d/scripts/musik_epidemic.py).
+Aturan pengguna (27 Nov 2026): "untuk musik selalu dari Epidemic pilihan utama, tapi bisa dari saya juga yang sudah ada, tinggal
+menyesuaikan agar rapi". Satu lagu datar sepanjang video terasa kosong; musik BERGANTI mengikuti babak cerita.
+Dipakai agen `penata-musik` (.claude/agents/penata-musik.md).
 
-  cari  "<kata kunci>" [jumlah=8] [durasi_min_dtk=60]   lagu tanpa vokal: id | judul - artis | durasi | bpm | mood/genre
-  edit  <id> <durasi_dtk> <keluar.mp3>                  versi resmi Epidemic sepanjang durasi babak (akhir alami), lalu unduh
+  cari  "<kata kunci>" [jumlah=8] [durasi_min_dtk=60]   Epidemic: lagu tanpa vokal: id | judul - artis | durasi | bpm | mood/genre
+  edit  <id> <durasi_dtk> <keluar.mp3>                  Epidemic: versi resmi sepanjang durasi babak (akhir alami), lalu unduh
+  lokal [suasana]                                       musik milik pengguna di D:\Sound\Backsound\<suasana>\ (96 lagu Epidemic yang sudah
+                                                        diunduh): daftar suasana, atau daftar lagu + durasi + LUFS satu suasana
+  sendiri <berkas.mp3> <durasi_dtk> <keluar.mp3> [mulai_dtk] [lufs=-20]
+                                                        musik pengguna (berkas kiriman atau dari `lokal`) dirapikan untuk satu babak:
+                                                        lewati intro hening, potong pas durasi, kalau kurang di-loop dengan crossfade
+                                                        2 dtk, fade masuk/keluar, kekerasan disamakan
   ukur  <berkas.mp3> …                                  LUFS, puncak, kurva energi per 2 dtk (cari hentakan, hening, puncak)
   latar <keluar.mp3> <durasi_video> <berkas@mulai[@lufs]> …   rakit satu musik latar: tiap potongan disamakan kekerasannya
                                                         (bawaan -20 LUFS), masuk/keluar crossfade, dipotong sepanjang video
-  cek   <film.html>                                     render audio saja (tanpa ekspor video): kejelasan tiap kalimat (suara vs
-                                                        musik+SFX, target rata-rata ≥ +10 dB, terburuk 0,5 dtk ≥ +6 dB) dan musik di sela
+  cek-stem <suara.wav|mp3> <latar.wav|mp3>              mesin APA PUN: kejelasan suara di atas musik+SFX per 0,5 dtk yang bersuara
+                                                        (median ≥ +10 dB, 10 % terburuk ≥ +6 dB) dan musik di sela
+  cek   <film.html> [folder_scripts_skill]              mesin HTML (kartun-3d/cerita-kartun/teks-kinetik-3d yang punya renderAudio): render
+                                                        audio saja, kejelasan tiap kalimat; folder_scripts_skill berisi jalankan.py
 
-Kunci API: variabel lingkungan EPIDEMIC_SOUND_MCP_API_KEY, atau dibaca dari D:\\Sound\\mcpsound.md / D:\\automation\\Video AI\\epedemic.md
+Kunci API: variabel lingkungan EPIDEMIC_SOUND_MCP_API_KEY, atau dibaca dari D:\Sound\mcpsound.md / D:\automation\Video AI\epedemic.md
 (rahasia: tidak pernah dicetak). Unduhan memakai langganan Epidemic pengguna (lisensi langganan itu). Di PowerShell 5.1 jangan
 mengirim JSON sebagai argumen (tanda kutip hilang); skrip ini hanya menerima argumen biasa.
-Alur di skill: SKILL.md Tahap 3 + references/mesin-2d.md §7b.
 """
 import base64, io, json, os, re, subprocess, sys, time, urllib.error, urllib.request, wave
 from pathlib import Path
@@ -46,7 +54,7 @@ def kunci():
 class Sesi:
     def __init__(self):
         self.k, self.sid, self.n = kunci(), None, 0
-        self.kirim('initialize', {'protocolVersion': '2025-03-26', 'capabilities': {}, 'clientInfo': {'name': 'motion-graphic-3d', 'version': '1.0'}})
+        self.kirim('initialize', {'protocolVersion': '2025-03-26', 'capabilities': {}, 'clientInfo': {'name': 'kartun-3d', 'version': '1.0'}})
         self.kirim('notifications/initialized', None, notif=True)
 
     def kirim(self, metode, params, notif=False):
@@ -152,9 +160,9 @@ def latar(keluar, durasi, *seg):
     print('ok', keluar, [(Path(f).name, t0, f'{g:+.1f} dB') for f, t0, g, _ in bag]); ukur(keluar)
 
 
-def cek(html):
+def cek(html, folder_skrip=None):
     import numpy as np
-    sys.path.insert(0, str(Path(__file__).parent)); import jalankan
+    sys.path.insert(0, str(Path(folder_skrip) if folder_skrip else Path(__file__).parent)); import jalankan
     js = """async (mode) => {
       const s = { n: K.normalisasi, vs: K.volumeSuara, vf: K.volumeSfx, vm: MUSIK_FILE && MUSIK_FILE.vol };
       if (mode !== 'campur') { K.normalisasi = false; K.volumeSuara = mode === 'suara' ? (s.vs ?? 1.1) : 0; K.volumeSfx = mode === 'sfx' ? (s.vf ?? 1) : 0; if (MUSIK_FILE) MUSIK_FILE.vol = mode === 'musik' ? (s.vm ?? .35) : 0; }
@@ -185,10 +193,86 @@ def cek(html):
     print(f'campuran akhir {I} LUFS, puncak {P} dBFS — {"BERES" if not buruk else f"{buruk} kalimat tenggelam: turunkan --vol-musik atau --redam-musik"}')
     sys.exit(1 if buruk else 0)
 
+BACKSOUND = Path(r'D:\Sound\Backsound')
+
+
+def dekode(f, sr=22050):
+    import numpy as np
+    raw = subprocess.run([ffmpeg(), '-v', 'error', '-i', str(f), '-ac', '1', '-ar', str(sr), '-f', 's16le', '-'], capture_output=True).stdout
+    return np.frombuffer(raw, np.int16).astype(np.float32) / 32768
+
+
+def lokal(suasana=None):
+    if not BACKSOUND.exists():
+        sys.exit(f'folder musik lokal tidak ada: {BACKSOUND}')
+    if not suasana:
+        for d in sorted(x for x in BACKSOUND.iterdir() if x.is_dir()):
+            print(f'{d.name}: {len(list(d.glob("*.mp3")))} lagu')
+        return
+    d = BACKSOUND / suasana
+    if not d.exists():
+        sys.exit(f'suasana tidak ada: {suasana} (pilihan: {", ".join(x.name for x in BACKSOUND.iterdir() if x.is_dir())})')
+    for f in sorted(d.glob('*.mp3')):
+        I, _ = lufs(str(f)); print(f'{f.name} | {durasi_berkas(str(f)):.0f} dtk | {I} LUFS | {f}')
+
+
+def sendiri(berkas, durasi, keluar, mulai=None, target=-20.0):
+    """musik pengguna dirapikan untuk satu babak: mulai di bagian bersuara, pas durasi (loop crossfade bila kurang), fade, LUFS target"""
+    import numpy as np
+    durasi, target = float(durasi), float(target)
+    x = dekode(berkas); sr = 22050; panjang = len(x) / sr
+    if mulai is None or mulai == '':
+        blok = sr // 2; e = np.array([np.sqrt(np.mean(x[i:i + blok] ** 2)) + 1e-9 for i in range(0, len(x) - blok, blok)])
+        acuan = np.median(e[e > 1e-4]) if (e > 1e-4).any() else 1e-3
+        idx = next((i for i, v in enumerate(e) if v > acuan * .35), 0)
+        mulai = idx * .5
+    mulai = float(mulai); sisa = panjang - mulai
+    tmp = Path(keluar).with_suffix('.tmp.wav'); xf = 2.0
+    if sisa >= durasi + .5:
+        fc = f'[0:a]atrim={mulai:.2f}:{mulai + durasi:.2f},asetpts=PTS-STARTPTS'
+        cmd = [ffmpeg(), '-y', '-v', 'error', '-i', str(berkas), '-filter_complex', fc + f',afade=t=in:st=0:d={0.8 if mulai > .5 else 0.05},afade=t=out:st={max(0, durasi - 2.5):.2f}:d=2.5[o]', '-map', '[o]', '-ar', '48000', '-ac', '2', str(tmp)]
+    else:   # kurang panjang: potongan [mulai, akhir] diulang dengan crossfade
+        n = int(np.ceil((durasi + xf) / max(1.0, sisa - xf))) + 1
+        ins, fc = [], []
+        for i in range(n):
+            ins += ['-i', str(berkas)]; fc.append(f'[{i}:a]atrim={mulai:.2f},asetpts=PTS-STARTPTS[p{i}]')
+        rantai = '[p0]'
+        for i in range(1, n):
+            fc.append(f'{rantai}[p{i}]acrossfade=d={xf}:c1=tri:c2=tri[x{i}]'); rantai = f'[x{i}]'
+        fc.append(f'{rantai}atrim=0:{durasi:.2f},afade=t=in:st=0:d=0.8,afade=t=out:st={max(0, durasi - 2.5):.2f}:d=2.5[o]')
+        cmd = [ffmpeg(), '-y', '-v', 'error', *ins, '-filter_complex', ';'.join(fc), '-map', '[o]', '-ar', '48000', '-ac', '2', str(tmp)]
+    subprocess.run(cmd, check=True)
+    I, _ = lufs(str(tmp)); g = (target - I) if I is not None else 0.0
+    subprocess.run([ffmpeg(), '-y', '-v', 'error', '-i', str(tmp), '-af', f'volume={g:.1f}dB,alimiter=limit=0.9', '-b:a', '192k', str(keluar)], check=True)
+    tmp.unlink()
+    print(f'ok {keluar} | {durasi:.1f} dtk dari detik {mulai:.1f} {"(di-loop)" if sisa < durasi + .5 else ""} | {g:+.1f} dB → {target} LUFS'); ukur(keluar)
+
+
+def cek_stem(suara, latar):
+    """mesin apa pun: suara (narasi/dialog saja) vs latar (musik + SFX saja), sudah pada volume akhir"""
+    import numpy as np
+    s, l = dekode(suara, 16000), dekode(latar, 16000); n = min(len(s), len(l)); s, l = s[:n], l[:n]; sr = 16000; b = sr // 2
+    db = lambda v: 20 * np.log10(np.sqrt(np.mean(v ** 2)) + 1e-9)
+    es = np.array([db(s[i:i + b]) for i in range(0, n - b, b)]); el = np.array([db(l[i:i + b]) for i in range(0, n - b, b)])
+    aktif = es > max(es.max() - 30, -50)
+    if not aktif.any():
+        sys.exit('tidak ada bagian bersuara di stem suara')
+    sel = es[aktif] - el[aktif]; med, p10 = float(np.median(sel)), float(np.percentile(sel, 10))
+    sela = ~aktif; musik_sela = float(np.median(el[sela]) - np.median(es[aktif])) if sela.any() else float('nan')
+    buruk = [f'{i * .5:.1f}' for i, (a, v) in enumerate(zip(aktif, es - el)) if a and v < 6][:12]
+    ok = med >= 10 and p10 >= 6
+    print(f'kejelasan suara: median {med:+.1f} dB, 10 % terburuk {p10:+.1f} dB (target ≥ +10 / ≥ +6) · musik di sela {musik_sela:+.1f} dB dari suara (bagus -8 … -12)')
+    if buruk:
+        print('detik tenggelam (< +6 dB):', ', '.join(buruk))
+    print('BERES' if ok else 'BELUM: turunkan musik/SFX saat bicara (redam lebih dalam) atau naikkan suara')
+    sys.exit(0 if ok else 1)
+
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         sys.exit(__doc__)
     c, a = sys.argv[1], sys.argv[2:]
     {'cari': lambda: cari(a[0], int(a[1]) if len(a) > 1 else 8, float(a[2]) if len(a) > 2 else 60), 'edit': lambda: edit(*a[:3]), 'ukur': lambda: ukur(*a),
-     'latar': lambda: latar(a[0], a[1], *a[2:]), 'cek': lambda: cek(a[0])}.get(c, lambda: sys.exit(__doc__))()
+     'latar': lambda: latar(a[0], a[1], *a[2:]), 'cek': lambda: cek(a[0], a[1] if len(a) > 1 else None),
+     'lokal': lambda: lokal(a[0] if a else None), 'sendiri': lambda: sendiri(a[0], a[1], a[2], a[3] if len(a) > 3 else None, a[4] if len(a) > 4 else -20),
+     'cek-stem': lambda: cek_stem(a[0], a[1])}.get(c, lambda: sys.exit(__doc__))()

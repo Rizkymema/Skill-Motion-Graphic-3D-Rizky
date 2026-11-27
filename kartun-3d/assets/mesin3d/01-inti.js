@@ -1,5 +1,5 @@
 /* =====================================================================
-   MESIN 3D motion-graphic-3d (Three.js r147 tertanam). Jangan disunting per video.
+   MESIN 3D kartun-3d (dulu motion-graphic-3d; Three.js r147 tertanam). Jangan disunting per video.
    Adegan yang punya dunia(d) digambar Three.js: cahaya + bayangan asli, bahan berkilau, kabut jarak, kamera 3D.
    Lapisan 2D (gambar(g, …): teks, label, notif, balon, grafik) dan subtitle ditumpuk di atasnya oleh mesin 2D.
    Deterministik: dunia dibangun SEKALI per adegan (dunia(d)), lalu tiap bingkai hanya diperbarui dari t
@@ -13,12 +13,13 @@ const D2R = Math.PI / 180;
 /* gaya bahan 3D (KONFIG.gaya): kartun = plastik lembut + garis tepi gelap bernuansa (acuan RicksClips3000, bawaan)
    clay = tanah liat doff tanpa garis · mainan = plastik mengilap · lowpoly = sisi rata bersudut */
 const GAYA3D_DASAR = {
+  sinematik: { kasar: .56, logam: 0, env: .6, tepi: 1.7, datar: false, ekspos: 1.0, seg: 1.15, sinema: true },   // bawaan kartun-3d (27 Nov 2026): render sinematik (08-sinema.js), tokoh tetap kartun
   kartun:  { kasar: .62, logam: 0, env: .38, tepi: 3.4, datar: false, ekspos: 1.0, seg: 1 },
   clay:    { kasar: .92, logam: 0, env: .25, tepi: 0, datar: false, ekspos: 1.02, seg: 1 },
   mainan:  { kasar: .3, logam: 0, env: .7, tepi: 0, datar: false, ekspos: .98, seg: 1 },
   lowpoly: { kasar: .8, logam: 0, env: .3, tepi: 0, datar: true, ekspos: 1.0, seg: .45 }
 };
-function gaya3D() { return Object.assign({}, GAYA3D_DASAR[K.gaya] || GAYA3D_DASAR.kartun, K.bahan || {}); }
+function gaya3D() { return Object.assign({}, GAYA3D_DASAR[K.gaya] || GAYA3D_DASAR.sinematik, K.bahan || {}); }
 
 /* cahaya 3D per keadaan (adegan.suasana): warna cahaya kunci / bayang / tepi / kabut diambil dari SUASANA mesin 2D;
    di sini kekuatan + tinggi matahari + langit. sorot = lampu sorot dari atas, sekeliling gelap. */
@@ -314,7 +315,7 @@ function aturKamera3D(dn, a, t, T) {
   if (dn._adaLantai && !a.bawahLantai) { const yl = dn.lantaiDi(dari[0], dari[2]) + .12; if (dari[1] < yl) dari[1] = yl; }   // kamera tidak pernah di bawah lantai (sudut rendah 'rendah' dulu menembus lantai → latar kosong)
   cam.position.set(dari[0], dari[1], dari[2]); cam.up.set(0, 1, 0); cam.lookAt(ke[0], ke[1], ke[2]);
   if (guling) cam.rotateZ(guling * D2R);
-  cam.updateMatrixWorld(); dn._ke = ke;
+  cam.updateMatrixWorld(); dn._ke = ke; dn._kamBidikan = bidikan;   // 08-sinema.js: bidikan → fokus di sasaran bidikan; manual → tokoh di tengah bingkai
 }
 
 /* ------------------------------------------------------------- menggambar adegan 3D ke kanvas 2D */
@@ -330,8 +331,8 @@ function gambar3D(c, a, t) {
   M3.tebalTepi = (dn.G.tepi || 0) * SK * U;
   M3.tepi.forEach(m => { m.uniforms.tebal.value = M3.tebalTepi; m.uniforms.res.value.set(w, h); });
   r.toneMappingExposure = dn.ekspos;
-  r.shadowMap.needsUpdate = true;
-  r.render(dn.scene, dn.kamera);
+  if (typeof sinemaAktif === 'function' && sinemaAktif(dn)) sinemaRender(r, dn, w, h);   // 08-sinema.js: HDR + kedalaman ruang + bloom + warna film
+  else { r.shadowMap.needsUpdate = true; r.setRenderTarget(null); r.render(dn.scene, dn.kamera); }
   c.drawImage(r.domElement, 0, 0, W, H);
   M3.aktif = dn; (M3.digambar || (M3.digambar = [])).push(dn);   // dunia yang tergambar di bingkai ini (cek anti-tembus)
   if (!MEMBANGUN) dn.daftarWajah();

@@ -1,4 +1,4 @@
-/* Contoh motion-graphic-3d bergaya INFOGRAFIS/EXPLAINER (topik keuangan), 9:16, ±21 dtk, tanpa narasi (subtitle teks + musik sintesis).
+/* Contoh kartun-3d (gaya sinematik) bergaya INFOGRAFIS/EXPLAINER (topik keuangan), 9:16, ±21 dtk, tanpa narasi (subtitle teks + musik sintesis).
    Pamerkan: studio motion graphic (lantai + dinding melengkung) berganti keadaan per babak (kobalt → oranye → kobalt → hijau → senja),
    HP 3D yang layarnya berisi motion graphic 2D (saldo turun), papan harga di dunia cerita, grafik batang 3D yang tumbuh + angka 3D,
    diagram pai 3D dengan potongan yang keluar, benda buatan sendiri dari bentuk dasar (celengan babi lewat d.grup), tokoh bicara + gestur,
@@ -11,7 +11,7 @@ const KONFIG = {
   judul: 'Uang Bocor Halus 3D',
   rasio: '9:16',
   fps: 30,
-  gaya: 'kartun',
+  gaya: 'sinematik',
   suasana: 'kobalt',
   tokoh: {
     dina: { kulit: '#E9B994', rambut: 'kuncir', warnaRambut: '#2A1810', baju: '#F2B134', kerah: 'kemeja', celana: '#2A3350', sepatu: '#3A2A22', bulu: true, warnaMata: '#3A2416' }

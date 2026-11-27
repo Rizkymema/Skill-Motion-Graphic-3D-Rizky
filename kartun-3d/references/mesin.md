@@ -1,4 +1,4 @@
-# Mesin motion-graphic-3d: dunia 3D (API `d.*`)
+# Mesin kartun-3d: dunia 3D (API `d.*`)
 
 Dibaca di Tahap 2 (build) dan setiap revisi. Satu file HTML berisi tiga mesin: **Three.js r147** (`assets/three.min.js`, MIT), **mesin 3D** (`assets/mesin3d/01-inti.js … 07-bidikan.js`) dan **mesin 2D** (blok `inti` di `assets/templat.html`: lapisan 2D, subtitle, suara, transisi, cek, ekspor; API di `references/mesin-2d.md`). `jalankan.py rakit` menanam ketiganya + blok `konfig` jadi satu `film.html` yang jalan offline. Per video hanya `konfig.js` (KONFIG + ADEGAN) yang ditulis.
 
@@ -87,6 +87,20 @@ Opsi: `sudut` (derajat, memutar kamera mengelilingi subjek; bawaan 18) · `tingg
 - `cahaya3d` (adegan atau KONFIG): `matahari` (±.55–1.0), `hemi` (±.16–.45), `tepi`, `isi` (pengisi), `tinggi` (derajat matahari), `sorot` (kekuatan lampu sorot), `terang` (target kecerahan), `ekspos`.
 - **Eksposur otomatis** per adegan (diukur sekali di t = 0, deterministik): kecerahan bagian tengah disetel ke target keadaan (terang ±.46, `sorot`/`malam` ±.3, `aula` .38, `senja` .4) → adegan tidak keruh/gosong. `adegan.ekspos` menimpa; `KONFIG.eksposOtomatis: false` mematikan.
 - Keadaan gelap (`sorot`, `malam`, `aula`): bayang dingin biru + cahaya tepi biru melawan lampu hangat (kontras hangat-dingin), cahaya pengisi wajah lebih kuat → tokoh terpisah dari latar cokelat/gelap.
+## 5b. Render sinematik (`assets/mesin3d/08-sinema.js`, sejak 27 Nov 2026; bawaan kartun-3d)
+Permintaan "upgrade versi 100% realistis" → dipilih **render sinematik, tokoh tetap kartun**. Aktif dengan `KONFIG.gaya: 'sinematik'` (bawaan bila `gaya` kosong) atau `KONFIG.sinema: true` di gaya lain; `KONFIG.sinema: false` / `adegan.sinema: false` mematikan.
+| Lapis | Isi | Atur (KONFIG atau adegan) |
+|---|---|---|
+| HDR + MSAA | adegan dirender ke target half-float antialias 4×, tone mapping lutut lembut di akhir (warna palet tetap jenuh) | `ekspos` seperti biasa |
+| Kedalaman ruang | latar/latar depan kabur menurut jarak ke **fokus**: bidikan otomatis → sasaran bidikan (wajah/subjek); kamera manual → tokoh yang kepalanya paling dekat ke tengah bingkai, kalau tak ada → titik pandang `ke`. Close-up = latar kabur kuat, bidikan lebar = hampir tajam | `dof` (pengali, 0 = mati, bawaan 1), `fokus` (m · id tokoh · nama benda) |
+| Bloom | bagian HDR > 1 berpendar (lampu, bohlam, mata menyala, layar) | `bloom` (bawaan .5) |
+| Warna film | saturasi +7 %, kontras S lembut, sorot hangat / bayang dingin | `hangat` (1 bawaan, 0 netral) |
+| Vignet + butir | tepi bingkai sedikit gelap; butir film halus deterministik per bingkai | `vignet` (.22), `butir` (.02) |
+| Bahan | sekali per dunia: relief halus dari tekstur warna yang ada (bata, kayu, goni, motif kain, tulisan), variasi kilap mikro; garis tepi tipis (1,7 px) | `KONFIG.bahan` seperti biasa |
+- Benda tembus pandang (berkas `d.sorot`, kaca, uap, pendar, lapisan wajah) tidak ikut peta kedalaman (dulu kerucut sorot membuat seluruh close-up kabur).
+- Biaya: ±1,8× gaya kartun (Vega 8: ±140 md/bingkai 1080p). Pratinjau otomatis mode Cepat; ekspor tetap penuh.
+- Periksa di `lembar` per detik: subjek yang bicara harus tajam; kalau kabur, beri `fokus: 'idTokoh'` di adegan itu.
+
 - Latar: bawaan gradien warna `P.latar` (layar). `d.studio()` = lantai + dinding melengkung tanpa sambungan (latar motion graphic klasik untuk diagram/benda). `d.langit()` = kubah langit + kabut horizon. `d.ruang()` = ruangan. `d.latar(atas, bawah)` gradien sendiri.
 
 ## 6. Fungsi dunia `d.*`
@@ -155,7 +169,7 @@ Definisi di `KONFIG.tokoh.<id>`: `tubuh` (`pria` bawaan · `wanita` · `gemuk` (
 | `tutupBoleh: true` | mulut/wajah boleh tertutup tangan/properti (mis. berbisik, menutup mulut kaget): cek + penalti kamera dilewati |
 | `hiasKepala`, `hiasBadan` | fungsi `(d, tokoh) => { d.kotak(…) … }`: aksesori sendiri menempel di kepala/badan (koordinat kepala, jari-jari `tokoh.R`), mis. kepala palang dacin makhluk |
 
-**Pose** (nama sama dengan motion-graphic 2D): `berdiri santai lambai tunjuk tunjukAtas presentasi pikir sedekap kaget hore angkatBahu sedih marah bingung pegangHp telepon duduk dudukHp dudukTegang dudukLesu dudukMakan menggambar ketik minum jongkok jongkokBimbing takut bawaKardus serahkan bimbing peganKepala makan makanKiri minumBerdiri naikMotor setir dorong baca tepuk angkat joget tidur lari` + **pose bercerita**: `usir` (mengibas) `tolak` `mundurTakut` `lapKeringat` `tuang` `aduk` `pikul` `angkatAtas` `menangis` `berdoa` `peluk` (menggigil) `tunjukMarah` `kacakPinggang` `membungkuk` `ambil` (dari lantai) `terduduk` (di lantai) `lambaiDua` `tepukDada`. Pakai pose bawaan sebelum membuat pose sendiri (pose buatan sendiri di uji Timbangan Daging kaku seperti zombie).
+**Pose** (nama sama dengan skill motion-graphic 2D): `berdiri santai lambai tunjuk tunjukAtas presentasi pikir sedekap kaget hore angkatBahu sedih marah bingung pegangHp telepon duduk dudukHp dudukTegang dudukLesu dudukMakan menggambar ketik minum jongkok jongkokBimbing takut bawaKardus serahkan bimbing peganKepala makan makanKiri minumBerdiri naikMotor setir dorong baca tepuk angkat joget tidur lari` + **pose bercerita**: `usir` (mengibas) `tolak` `mundurTakut` `lapKeringat` `tuang` `aduk` `pikul` `angkatAtas` `menangis` `berdoa` `peluk` (menggigil) `tunjukMarah` `kacakPinggang` `membungkuk` `ambil` (dari lantai) `terduduk` (di lantai) `lambaiDua` `tepukDada`. Pakai pose bawaan sebelum membuat pose sendiri (pose buatan sendiri di uji Timbangan Daging kaku seperti zombie).
 **Pegang** juga: `jeriken sekop sapu ember karung piring tongkat lentera` (lentera menyala). Pose duduk: pinggul 0,52 m (pas di `kursi`); pakai `naik: kursi` supaya tepat di jok.
 **Pose sendiri** `KONFIG.pose3d.nama`: `lKi`/`lKa` = lengan kiri/kanan `[maju, samping, putar ke dalam, tekuk siku]` (maju 90 = lurus ke depan, samping 90 = mendatar ke samping, 180 = ke atas; putar −90 membuat siku menekuk ke atas seperti melambai), `kKi`/`kKa` = kaki `[maju, samping, tekuk lutut]`, `badan [condong, miring, putar]`, `kepala [angguk, miring, toleh]`, `turun` (m), penanda `duduk gestur goyang gores ketik tepuk joget gemetar loncat rebah bahu depan`. Uji pose baru di lembar kontak dari dua sudut sebelum dipakai.
 **Ekspresi**: `netral datar senang gembira kaget sedih marah bingung licik takut ngantuk` (wajah digambar: alis, mata beriris + kilau, kedip, mulut bicara 9 bentuk, pipi merona).

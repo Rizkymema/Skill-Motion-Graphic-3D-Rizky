@@ -1,6 +1,6 @@
 # Mesin lapisan 2D (API `g.*`, suara, subtitle, transisi, SFX, ekspor)
 
-Salinan API mesin motion-graphic yang ikut tertanam di skill ini. Di motion-graphic-3d dipakai untuk: **lapisan 2D di atas dunia 3D** (`gambar(g, t, d, T)` di adegan ber-`dunia`), adegan 2D penuh (adegan tanpa `dunia`), subtitle, musik/SFX/narasi, transisi, cek, dan ekspor. Dunia 3D: `references/mesin.md`.
+Salinan API mesin motion-graphic (2D) yang ikut tertanam di skill ini (skill `motion-graphic` sendiri tetap terpisah). Dipakai untuk: **lapisan 2D di atas dunia 3D** (`gambar(g, t, d, T)` di adegan ber-`dunia`), adegan 2D penuh (adegan tanpa `dunia`), subtitle, musik/SFX/narasi, transisi, cek, dan ekspor. Dunia 3D: `references/mesin.md`.
 Perbedaan di skill ini: `KONFIG.gaya` bernilai `kartun | clay | mainan | lowpoly` (gaya bahan 3D; lapisan 2D memakai efek gaya kartun), di adegan ber-`dunia` `kamera` = kamera 3D dan lapisan 2D memakai `kamera2d` (bawaan diam), dan `g.layar/g.mulut/g.atasKepala/g.labelDi` menempelkan elemen 2D ke titik 3D (`mesin.md` §8). Tokoh 2D (`g.tokoh`) tetap ada untuk adegan 2D, tetapi tokoh video ini sebaiknya tokoh 3D (`d.tokoh`).
 
 ## 1. Prinsip
@@ -167,6 +167,8 @@ Patokan CPU cloud (1080×1920, ms per bingkai termasuk raster): adegan biasa fla
   Tombol **Muat suara** di pemutar: satu berkas = narasi; `L01.mp3…` = per baris; nama berisi `musik` = musik.
 - `naskah.txt` untuk `rakit --naskah`: satu baris narasi per baris (`L01 | teks`), urut seperti rekaman; baris berawalan `#` = catatan (sumber, arahan), tidak ikut.
 - Dengan narasi, naikkan `vol` musik sintesis ±2,5× (1,0–1,6) karena audio akhir dinormalisasi mengikuti suara narasi.
+- **Caption satu kata** ala RicksClips (seri kartun, dari kartun-stickman-3d): `subtitle: { gaya: 'kotak', maksKata: 1 }`.
+- **Ajakan wajib** (kartun-3d): follow/like/komen di 8 dtk terakhir (teks, label, atau narasi); `cek` SALAH tanpa ajakan kecuali `KONFIG.tanpaAjakan: true`.
 - **Subtitle bawaan = gaya film** (permintaan 24 Nov 2026: kecil dan biasa seperti film): putih `600`, 44 px di 9:16 (38 px di 16:9) × `subtitle.ukuran`, tepi hitam tipis + bayangan lembut, satu kalimat utuh sekaligus (maks. ±8 kata / 40 huruf per potongan di 9:16, pecah di titik/tanya/seru dan jeda > 0,7 dtk), maks. 2 baris, di ±73,5% tinggi (9:16) / 89,5% (16:9), tanpa sorot kata dan tanpa warna aksen (`*` diabaikan). `subtitle.gaya: 'garis' | 'kotak'` mengembalikan gaya lama (66 px, tebal, 3 kata, kata aktif disorot) untuk caption pendek ala Shorts. **Teks atas** (`g.teks`/`g.teksMasuk`) hanya untuk hal penting, bukan pengganti subtitle.
 - **Musik sintesis** `sintesis`: `pulsa` (kick + hi-hat + bass + pad), `ceria` (pulsa + arpeggio), `tegang` (detak jantung + pad gelap), `pad` (akord panjang). Opsi `bpm`, `kunci` (Hz nada dasar), `akord` (semitone, mis. mayor `[[0,4,7],[5,9,12],[7,11,14],[0,4,7]]`), `vol`, `mulai`, `akhir`. Diredam otomatis saat narasi.
   Opsi segmen musik tambahan: `fadeMasuk` (dtk), `fadeKeluar` (dtk, memudar sampai hening di `akhir`), `potong: true` (terpotong tiba-tiba di `akhir`, untuk efek "musik terputus"). Beberapa segmen boleh bertumpuk (mis. `pad` + `ceria`) supaya instrumen terasa makin kaya.
@@ -182,7 +184,7 @@ Satu lagu datar sepanjang video terasa kosong (uji Timbangan Daging: "Dead Silen
 5. **Rakit**: `musik_epidemic.py latar _kerja/audio/musik_latar.mp3 <durasi> A.mp3@0@-20 B.mp3@43@-20 C.mp3@92.5@-19 D.mp3@143.3@-21` (disamakan ke LUFS target, crossfade, dipotong sepanjang video). Babak horor/klimaks −19, babak tenang −21.
 6. **Tanam**: `rakit … --musik _kerja/audio/musik_latar.mp3 --vol-musik 1.15 --redam-musik .2 --musik-utuh`.
 7. **Cek campuran** (render audio saja, ±1 menit): `musik_epidemic.py cek _kerja/film.html` → tiap kalimat rata-rata ≥ +10 dB dan terburuk 0,5 dtk ≥ +6 dB di atas musik+SFX; musik di sela dialog −8 … −12 dB dari suara. Tenggelam → turunkan `--redam-musik`/`--vol-musik`; musik tak terasa → naikkan `--vol-musik`.
-8. Catat kredit (judul — artis per babak) di `musik - kredit.txt` dan deskripsi YouTube. Contoh hasil: Timbangan Daging v4 (`Hasil Video\Motion Graphic 3D\_contoh\2026-11-27 Timbangan Daging v4 musik\`).
+8. Catat kredit (judul — artis per babak) di `musik - kredit.txt` dan deskripsi YouTube. Contoh hasil: Timbangan Daging v4 (video lama, `Hasil Video\Motion Graphic 3D\_contoh\2026-11-27 Timbangan Daging v4 musik\`).
 
 ## 8. Transisi (`masuk` adegan berikutnya)
 | Nama | Lama | SFX otomatis | Kapan |

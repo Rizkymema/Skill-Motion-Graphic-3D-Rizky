@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Motion Graphic 3D</title>
+<title>Kartun 3D</title>
 <!--
   MOTION GRAPHIC 3D — satu file mandiri: dunia 3D (Three.js tertanam) + lapisan 2D + pemutar + cek kualitas + ekspor MP4
   (tanpa server, tanpa unduhan, jalan offline).
   Cara pakai: buka di Chrome/Edge → ▶ untuk pratinjau → "Ekspor MP4" untuk menyimpan video.
   Yang disunting per video HANYA blok skrip "konfig" (KONFIG + ADEGAN) dan, bila ada suara, blok "data-suara".
   Blok skrip "three-js" (Three.js r147, MIT), "inti3d" (mesin 3D) dan "inti" (mesin 2D, pemutar, suara, ekspor) adalah mesin
-  skill motion-graphic-3d; jangan disunting per video. Butuh WebGL (Chrome/Edge dengan akselerasi grafis).
+  skill kartun-3d (dulu motion-graphic-3d); jangan disunting per video. Butuh WebGL (Chrome/Edge dengan akselerasi grafis).
   URL: ?t=12 mulai dari detik 12 · ?render sembunyikan kontrol (untuk otomatisasi) · ?cek jalankan cek kualitas saat dibuka.
 -->
 <style>
@@ -83,7 +83,7 @@ const ADEGAN = [
 
 <script id="inti">
 /* =====================================================================
-   MESIN 2D motion-graphic-3d (turunan mesin motion-graphic v2): lapisan 2D di atas dunia 3D, subtitle, suara, cek, ekspor.
+   MESIN 2D kartun-3d (turunan mesin motion-graphic v2): lapisan 2D di atas dunia 3D, subtitle, suara, cek, ekspor.
    Adegan yang punya dunia(d) digambar mesin 3D (blok inti3d) lebih dulu. Jangan disunting per video.
    Semua gambar dihitung dari waktu t lewat seek(t): deterministik, bisa diekspor bingkai demi bingkai.
    ===================================================================== */
@@ -2191,7 +2191,9 @@ async function rekamRealtime(progres) {
 
 /* ------------------------------------------------------------- cek kualitas, lembar kontak, thumbnail */
 function luasIris(a, b) { const x = Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)), y = Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)); return x * y; }
+const RE_AJAKAN = /follow|ikuti|like|suka|komen|subscribe|langganan|share|bagikan|simpan video/i;
 function hasilCek(langkah = 0.25) {
+  let ajakanAda = false;
   const salah = [], saran = [], skalaLama = SK; aturSkala(.25);
   const kecil = document.createElement('canvas'); kecil.width = 27; kecil.height = Math.round(27 * H / W); const kx = kecil.getContext('2d', { willReadFrequently: true });
   let prev = null; const ubah = [], lamaTeks = {}, catat = (arr, pesan) => { if (!arr.includes(pesan)) arr.push(pesan); };
@@ -2203,6 +2205,7 @@ function hasilCek(langkah = 0.25) {
     if (typeof periksaTembus3D === 'function') periksaTembus3D().forEach(s => catatW(salah, t, s));   // 3D: tembus antar-benda/tokoh, kamera
     if (typeof periksaBidikan3D === 'function') { const pb = periksaBidikan3D(); pb.salah.forEach(s => catatW(salah, t, s)); pb.saran.forEach(s => catatW(saran, t, s)); }   // 3D: wajah tokoh yang bicara terlihat
     const teks = REG.teks.filter(x => !x.tr), sub = REG.sub[0];
+    if (t > DURASI - 8 && !ajakanAda) { const s = teks.map(x => x.s).join(' ') + ' ' + (REG.sub.map(x => x.s || '').join(' ')) + ' ' + ((SUARA && SUARA.baris) || []).filter(b => b.mulai + b.durasi > DURASI - 8).map(b => b.teks || '').join(' '); if (RE_AJAKAN.test(s)) ajakanAda = true; }
     teks.forEach(x => {
       lamaTeks[x.s] = (lamaTeks[x.s] || 0) + langkah;
       // 9:16: tombol suka/komentar di kanan mulai ±42% tinggi, keterangan + nama akun di bawah 76%
@@ -2235,6 +2238,8 @@ function hasilCek(langkah = 0.25) {
   if (A.some(a => a.dunia) && M3.gagal) catat(salah, 'WebGL tidak tersedia: dunia 3D tidak tergambar');
   M3.statTokoh.forEach(({ a, id, o }) => { if (a.d < 3.2) return; const n = Array.isArray(o.pose) ? o.pose.length : 1, ne = Array.isArray(o.ekspresi) ? o.ekspresi.length : 1;
     if (n < 2 && ne < 2 && !o.jalan && !o.bicara && !o.anim && !o.naik) catat(saran, `tokoh "${id}" di adegan "${a.id}" berpose dan berekspresi sama ${a.d.toFixed(1)} dtk (ganti pose/ekspresi tiap 1,5–2,5 dtk, beri jalan atau bicara)`); });
+  // ajakan wajib di akhir (aturan kartun-stickman-3d, dibawa ke kartun-3d 27 Nov 2026): follow/like/komen di 8 dtk terakhir (teks, subtitle, atau kalimat narasi)
+  if (!K.tanpaAjakan && !ajakanAda) catat(salah, 'akhir video wajib ajakan FOLLOW / LIKE / KOMEN (teks atau narasi di 8 dtk terakhir, mis. kartu penutup) — atau KONFIG.tanpaAjakan: true bila saya minta tanpa ajakan');
   catatan.forEach(cn => catat(salah, cn));
   aturSkala(skalaLama); seek(WAKTU);
   return { beres: !salah.length, salah, saran, durasi: DURASI, adegan: A.map(a => [a.id, +a.mulai.toFixed(2), +a.akhir.toFixed(2), a.masuk || 'potong']) };
