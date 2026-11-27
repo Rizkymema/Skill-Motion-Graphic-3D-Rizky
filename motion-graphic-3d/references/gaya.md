@@ -14,6 +14,7 @@ Dibaca di Tahap 1 (3 konsep) dan Tahap 2 (build). Gaya menentukan **bahan dan ca
 Konsep A di Tahap 1 selalu **`kartun`** dengan keadaan terkuat untuk ceritanya; B dan C beda **dunia dan keadaan/warna** (boleh beda gaya bila cocok). `KONFIG.bahan` menimpa per video (mis. `{ tepi: 5 }` garis lebih tebal, `{ env: .8 }` lebih mengilap).
 
 ## 2. Tata kamera 3D (pengganti parallax 2D)
+- **Adegan bertokoh: pakai BIDIKAN OTOMATIS** (`mesin.md` §4a), bukan koordinat manual. Satu entri bidikan per baris dialog atau tiap 1,5–3 dtk; yang bicara selalu `bidik`/`b` di `atasBahu`; `dua` untuk pembuka dan reaksi; `benda` untuk sisipan (timbangan, layar, barang bukti) di sela kalimat; `wajah` di kalimat puncak/emosi; `tinggi: 'rendah'` untuk tokoh yang menakutkan/berkuasa.
 - **Setiap adegan kamera bergerak**: dolly masuk pelan (bawaan perasaan), dolly keluar (pengungkapan), geser sejajar (perjalanan), orbit (benda utama, data), ikut (kendaraan/tokoh berjalan: `ikuti`), crane naik (penutup), low angle (hal besar/mengancam), high angle (peta, meja, kesepian).
 - Satu gerak utama per adegan, ease `inOutSine`/`outCubic`; hentakan pakai `guncang` sesaat atau transisi `kilat`/`zoom`.
 - **Komposisi 9:16**: lebar terlihat ≈ **0,45 × jarak kamera** (fov 40–42). Susun benda **bertingkat ke dalam** (depan-tengah-belakang) dan bertumpuk vertikal, bukan berjajar lebar. Subjek di 20–66% tinggi; bagian bawah 26% sering tertutup subtitle/keterangan aplikasi.

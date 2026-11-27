@@ -2019,7 +2019,13 @@ async function renderAudio(sr = 48000) {
   for (const e of semuaSfx()) { if (e.berkas) mainkanBerkas(ac, sfxBus, e); else SFX[e.jenis](ac, sfxBus, Math.max(0, e.t), e.vol ?? 1, e); }
   [].concat(K.musik || []).forEach(m => m && m.sintesis && jadwalMusik(ac, master, m, DURASI)); // satu objek atau daftar segmen {sintesis, mulai, akhir, ...}
   if (BUFFER_MUSIK) { const mo = MUSIK_FILE || {}, vol = mo.vol ?? .35, s = ac.createBufferSource(), g = ac.createGain(); s.buffer = BUFFER_MUSIK; s.loop = mo.ulang !== false; g.gain.value = vol;
-    if (SUARA && SUARA.baris) for (const b of SUARA.baris) { g.gain.setTargetAtTime(vol * .3, Math.max(0, b.mulai - .12), .06); g.gain.setTargetAtTime(vol, b.mulai + b.durasi + .15, .25); }
+    // redam saat dialog/narasi (sejak 27 Nov 2026): kedalaman `redam` (bawaan .3) DISESUAIKAN per kalimat — kalimat yang diucapkan pelan
+    // (bisikan, nada dingin) meredam musik lebih dalam supaya tetap ≥ ±10 dB di atas musik; musik boleh lebih keras di sela dialog
+    if (SUARA && SUARA.baris) {
+      const rmsB = SUARA.baris.map(b => { const bf = BUFFER_SUARA[b.id]; if (!bf) return 0; const c = bf.getChannelData(0); let s = 0, n = 0; for (let i = 0; i < c.length; i += 8) { s += c[i] * c[i]; n++; } return Math.sqrt(s / Math.max(1, n)); });
+      const ada = rmsB.filter(x => x > 0).sort((a, b) => a - b), med = ada.length ? ada[Math.floor(ada.length / 2)] : 0, redam = mo.redam ?? .3;
+      SUARA.baris.forEach((b, i) => { const k = med && rmsB[i] ? jepit(rmsB[i] / med, .35, 1) : 1; g.gain.setTargetAtTime(vol * redam * k, Math.max(0, b.mulai - .12), .06); g.gain.setTargetAtTime(vol, b.mulai + b.durasi + .15, .25); });
+    }
     g.gain.setTargetAtTime(0.0001, Math.max(0, DURASI - 1.2), .35); s.connect(g); g.connect(master); s.start(w(mo.mulai) || 0); }
   const vo = ac.createGain(); vo.gain.value = K.volumeSuara ?? 1.1; vo.connect(master);
   if (SUARA && SUARA.baris) for (const b of SUARA.baris) { const buf = BUFFER_SUARA[b.id]; if (!buf) continue; const s = ac.createBufferSource(); s.buffer = buf; s.connect(vo); s.start(Math.max(0, b.mulai)); }
@@ -2113,9 +2119,12 @@ async function pilihKodekAudio(sr) {
   return null;
 }
 async function eksporMP4(opsi = {}) {
-  // bitrate: KONFIG.bitrate (Mbps) atau otomatis 7–9 Mbps, dibatasi supaya file ≤ ±46 MB (batas unggah 50 MB)
+  // bitrate: KONFIG.bitrate (Mbps) atau otomatis 10 Mbps (30 fps) / 14 Mbps (60 fps): gradien + bayangan 3D butuh bitrate tinggi supaya tidak pecah.
+  // Batas ukuran HANYA bila diminta (KONFIG.batasMB / opsi.batasMB, mis. 46 untuk unggah lewat Balasin ≤ 50 MB); unggah YouTube dari PC tanpa batas.
+  // (Video 2:45 dulu dipaksa ≤ 46 MB → 2,5 Mbps → gambar pecah; keluhan uji "Timbangan Daging", 26 Nov 2026.)
   const fps = opsi.fps || FPS, progres = opsi.progres || (() => {});
-  const bitrate = opsi.bitrate || (K.bitrate ? K.bitrate * 1e6 : Math.round(Math.max(2.5e6, Math.min(fps > 30 ? 9e6 : 7e6, 46 * 8e6 / Math.max(1, DURASI) - 220000))));
+  const batasMB = opsi.batasMB ?? K.batasMB, dasar = fps > 30 ? 14e6 : 10e6;
+  const bitrate = opsi.bitrate || (K.bitrate ? K.bitrate * 1e6 : Math.round(batasMB ? Math.max(2.5e6, Math.min(dasar, batasMB * 8e6 / Math.max(1, DURASI) - 220000)) : dasar));
   if (!('VideoEncoder' in window)) return rekamRealtime(progres);
   const cfgV = await pilihKodekVideo(fps, bitrate); if (!cfgV) return rekamRealtime(progres);
   const skalaLama = SK; aturSkala(1);
@@ -2192,6 +2201,7 @@ function hasilCek(langkah = 0.25) {
   for (let t = 0; t <= DURASI + 1e-6; t += langkah) {
     seek(t);
     if (typeof periksaTembus3D === 'function') periksaTembus3D().forEach(s => catatW(salah, t, s));   // 3D: tembus antar-benda/tokoh, kamera
+    if (typeof periksaBidikan3D === 'function') { const pb = periksaBidikan3D(); pb.salah.forEach(s => catatW(salah, t, s)); pb.saran.forEach(s => catatW(saran, t, s)); }   // 3D: wajah tokoh yang bicara terlihat
     const teks = REG.teks.filter(x => !x.tr), sub = REG.sub[0];
     teks.forEach(x => {
       lamaTeks[x.s] = (lamaTeks[x.s] || 0) + langkah;
@@ -2203,6 +2213,7 @@ function hasilCek(langkah = 0.25) {
       if (sub && luasIris(x, sub) > 0.08 * Math.min((x.x1 - x.x0) * (x.y1 - x.y0), (sub.x1 - sub.x0) * (sub.y1 - sub.y0))) catatW(salah, t, `teks bertabrakan dengan subtitle: "${x.s.slice(0, 40)}"`);
     });
     for (let i = 0; i < teks.length; i++) for (let j = i + 1; j < teks.length; j++) { const a = teks[i], b = teks[j], m = Math.min((a.x1 - a.x0) * (a.y1 - a.y0), (b.x1 - b.x0) * (b.y1 - b.y0)); if (luasIris(a, b) > .12 * m) catatW(salah, t, `teks saling menimpa: "${a.s.slice(0, 24)}" × "${b.s.slice(0, 24)}"`); }
+    REG.subjek.filter(f => !f.tr && f.x1 - f.x0 > 40).forEach(f => teks.forEach(x => { if (luasIris(x, f) > .1 * (f.x1 - f.x0) * (f.y1 - f.y0)) catatW(salah, t, `teks "${x.s.slice(0, 30)}" menutupi wajah tokoh "${f.id}" — pindahkan teks, beri keluar lebih awal, atau pakai bidikan lain`); }));   // teks atas tidak boleh menimpa wajah
     if (sub) REG.subjek.filter(x => !x.tr).forEach(f => { if (luasIris(f, sub) > .15 * (f.x1 - f.x0) * (f.y1 - f.y0)) catatW(salah, t, `subtitle menutupi wajah tokoh "${f.id}" (geser tokoh ke atas atau perkecil)`); });
     kx.drawImage(KANVAS, 0, 0, kecil.width, kecil.height); const d = kx.getImageData(0, 0, kecil.width, kecil.height).data; const lum = [];
     for (let i = 0; i < d.length; i += 4) lum.push(d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11);
@@ -2216,7 +2227,8 @@ function hasilCek(langkah = 0.25) {
   });
   // ritme: perubahan visual setiap 1,5–3 detik
   for (let i = 0; i < ubah.length; i++) { let jumlah = 0, j = i; while (j < ubah.length && ubah[j][0] - ubah[i][0] < 3) { jumlah += ubah[j][1]; j++; } if (j < ubah.length && jumlah < 6) { catat(saran, `${fmt(ubah[i][0])}–${fmt(ubah[i][0] + 3)} hampir tidak ada perubahan visual (tambah gerak/elemen baru)`); i = j; } }
-  Object.entries(lamaTeks).forEach(([s, d]) => { if (d < 1.0 && s.length > 3 && !/\d/.test(s)) catat(saran, `teks tampil < 1 dtk, sulit terbaca: "${s.slice(0, 40)}"`); });
+  Object.entries(lamaTeks).forEach(([s, d]) => { if (d < 1.0 && s.length > 3 && !/\d/.test(s)) catat(saran, `teks tampil < 1 dtk, sulit terbaca: "${s.slice(0, 40)}"`);
+    if (d > 6.5 && typeof M3 !== 'undefined') catat(saran, `teks "${s.slice(0, 40)}" tampil ${d.toFixed(1)} dtk — beri keluar (teks atas hanya untuk kalimat yang sedang diucapkan, 2–4 dtk)`); });
   A.forEach(a => { if (a.d < .8) catat(saran, `adegan "${a.id}" hanya ${a.d.toFixed(2)} dtk`); if (a.d > 6) catat(saran, `adegan "${a.id}" ${a.d.toFixed(1)} dtk; pastikan ada perubahan tiap 1,5–3 dtk`); });
   const ragam = new Set(A.slice(1).map(a => a.masuk || 'potong')); if (A.length > 3 && ragam.size < 2) catat(saran, 'transisi kurang bervariasi');
   if (!semuaSfx().length) catat(saran, 'belum ada SFX');

@@ -1,0 +1,30 @@
+# Timbangan Daging (contoh motion-graphic-3d): satu baris = satu baris suara, urut rekaman. Suara asli per tokoh (ElevenLabs) tidak disertakan di repo.
+# Tanpa rekaman, rakit --naskah tetap jalan: durasi tiap baris diperkirakan dari jumlah kata.
+# narator
+L01 | Di balik sebutir nasi putih di piring makan kita, ada keringat petani yang jujur. Namun di gudang pengap ini, kejujuran itu ditukar dengan pemutih pakaian dan jarum timbangan yang dipaksa berbohong.
+# darmo
+L02 | Nah, gini dong! Beras apek sisa tahun lalu disiram pemutih dikit, langsung kinclong kayak beras Cianjur super! Jangan lupa, Jang, timbangannya ganjal besi magnet kayak biasa!
+# ujang
+L03 | Pak, ini baunya nyengat banget lho. Kalau pembeli pada keracunan gimana?
+# darmo
+L04 | Halah, lidah orang susah mana ngerti beda beras mahal sama oplosan! Yang penting untung gue tebel!
+# mbok
+L05 | Pak Darmo... beras yang saya beli kemarin baunya kayak obat nyamuk. Cucu saya muntah-muntah habis makan nasi ini. Tolong tukar, Pak...
+# darmo
+L06 | Barang yang udah dibeli gak bisa ditukar, Mbok! Salah sendiri masak airnya kurang!
+# mbok
+L07 | Beras itu sumber nyawa orang, Mo. Kalau kamu kasih racun ke perut orang, nanti perutmu sendiri yang ditagih.
+# darmo
+L08 | Beras masuk perut juga ujung-ujungnya jadi kotoran, Mbok! Gak ada yang bakal mati cuma gara-gara beras diputihin! Sana pulang!
+# darmo
+L09 | Angin dari mana sih? Pintu udah dikunci rapat...
+# darmo
+L10 | Si-siapa lu?! Maling ya?! Jangan mendekat!
+# penimbang
+L11 | Kurang... lima... kilo... bayar... pakai... dagingmu...
+# darmo
+L12 | Tolong! Kok gue mengecil?! Ujang! Tolongin gue!
+# ujang
+L13 | Lho?! Kok sekarung beras ini beratnya enam puluh delapan kilo?! Persis berat badannya Pak Darmo?!
+# narator
+L14 | Ia mencuri timbangan demi sesuap emas, kini tubuhnya sendiri yang habis ditimbang rasa sakit.

@@ -47,7 +47,26 @@ const POSE3D = {
   angkat:     { lKi: [30, 24, 70, 40], lKa: [30, 24, 70, 40], badan: [14, 0, 0], kKi: [30, 10, 40], kKa: [30, 10, 40], turun: .1 },
   joget:      { lKi: [30, 40, 0, 60], lKa: [30, 40, 0, 60], joget: 1 },
   tidur:      { lKi: [0, 10, 10, 10], lKa: [0, 10, 10, 10], rebah: 1, kepala: [0, 10, 0] },
-  lari:       { lKi: [3, 9, 15, 70], lKa: [3, 9, 15, 70], badan: [10, 0, 0] }
+  lari:       { lKi: [3, 9, 15, 70], lKa: [3, 9, 15, 70], badan: [10, 0, 0] },
+  // pose bercerita (sejak 26 Nov 2026, dari uji "Timbangan Daging": penulis terpaksa membuat pose sendiri yang kaku)
+  usir:       { lKi: [3, 9, 15, 12], lKa: [50, 18, 10, 45], kibas: 1, badan: [0, 0, -12], kepala: [0, 0, -15] },
+  tolak:      { lKi: [42, 28, -22, 52], lKa: [42, 28, -22, 52], badan: [-5, 0, 0] },
+  mundurTakut:{ lKi: [55, 25, 45, 118], lKa: [55, 25, 45, 118], badan: [-12, 0, 0], kepala: [-8, 0, 0], kKi: [-8, 6, 14], kKa: [10, 6, 18], gemetar: .6 },
+  lapKeringat:{ lKi: [3, 9, 15, 12], lKa: [40, 38, -55, 148], kepala: [-6, 6, 0] },
+  tuang:      { lKa: [44, 26, 4, 34], lKi: [40, 14, 46, 74], badan: [14, 0, 0], kepala: [16, 0, 0] },
+  aduk:       { lKa: [52, 14, 30, 58], lKi: [44, 12, 40, 72], badan: [22, 0, 0], kepala: [18, 0, 0], kKi: [10, 6, 12], kKa: [-4, 6, 6], aduk: 1 },
+  pikul:      { lKa: [155, 22, -40, 150], lKi: [3, 9, 15, 12], badan: [4, 6, 0], kepala: [0, -6, 0] },
+  angkatAtas: { lKi: [165, 18, 0, 30], lKa: [165, 18, 0, 30], kepala: [-10, 0, 0] },
+  menangis:   { lKi: [50, 16, 70, 132], lKa: [50, 16, 70, 132], kepala: [20, 0, 0], badan: [10, 0, 0], isak: 1 },
+  berdoa:     { lKi: [36, 8, 78, 118], lKa: [36, 8, 78, 118], kepala: [14, 0, 0] },
+  peluk:      { lKi: [38, 10, 96, 112], lKa: [42, 10, 92, 108], kepala: [8, 0, 0], gemetar: .5 },
+  tunjukMarah:{ lKa: [86, 8, 0, 4], lKi: [-18, 38, 95, 100], badan: [10, 0, -8], kepala: [-4, 0, 0] },
+  kacakPinggang: { lKi: [-18, 38, 95, 100], lKa: [-18, 38, 95, 100], gestur: 1 },
+  membungkuk: { lKi: [70, 10, 0, 12], lKa: [70, 10, 0, 12], badan: [55, 0, 0], kepala: [-28, 0, 0], kKi: [14, 6, 20], kKa: [14, 6, 20] },
+  ambil:      { lKi: [60, 12, 10, 20], lKa: [95, 10, 0, 10], badan: [62, 0, 0], kepala: [-30, 0, 0], kKi: [45, 10, 70], kKa: [45, 10, 70], turun: .12 },
+  terduduk:   { lKi: [-30, 25, 0, 10], lKa: [-30, 25, 0, 10], kKi: [88, 10, 6], kKa: [88, 10, 6], turun: .7, duduk: 1, badan: [-8, 0, 0] },
+  lambaiDua:  { lKi: [8, 118, -90, 48], lKa: [8, 118, -90, 48], goyang: 1, goyangKi: 1 },
+  tepukDada:  { lKi: [3, 9, 15, 12], lKa: [40, 12, 80, 128], kepala: [-6, 0, 0], badan: [-4, 0, 0] }
 };
 const GESTUR_POSE = new Set(Object.keys(POSE3D).filter(k => POSE3D[k].gestur));
 function pose3D(nama) { const p = (K.pose3d && K.pose3d[nama]) || POSE3D[nama]; if (!p && nama && !pose3D._lapor) { pose3D._lapor = 1; catatan.push('pose 3D tidak dikenal: ' + nama + ' (lihat references/mesin.md §6)'); } return p || POSE3D.berdiri; }
@@ -69,14 +88,34 @@ function nilaiDi(v, t, a, lama = .4) {
   return { a: A0, b: B0, k };
 }
 
+/** perut gemuk: dorong permukaan depan badan (profil bubut) keluar dengan bentuk halus → satu permukaan, tanpa sambungan */
+function perutkan(g) {
+  const p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i); const r = Math.hypot(v.x, v.z); if (r < 1e-4) continue;
+    const depan = Math.max(0, v.z / r) ** 1.4, dorong = .095 * Math.exp(-(((v.y - .15) / .13) ** 2)) * depan;
+    p.setXYZ(i, v.x * (1 + dorong / r * .35), v.y, v.z * (1 + dorong / r));
+  }
+  g.computeVertexNormals(); return g;
+}
 class Tokoh3D {
   constructor(dn, id, def, o) {
     this.dn = dn; this.id = id; this.def = def; this.o = o; this.a = dn.a; this.benih = benih3(id);
-    const anak = def.tubuh === 'anak', R = this.R = .2 * (def.kepalaSkala ?? (anak ? 1.18 : 1)), gemuk = def.gemuk ? 1.22 : 1;
-    this.skala = (o.skala ?? 1) * (def.tinggi ?? 1) * (anak ? .62 : 1);
-    const kulit = def.kulit || '#F0C29A', baju = def.baju || P.utama, celana = def.celana || campur(P.gelap, '#33415C', .6), sepatu = def.sepatu || '#3A3A48';
-    const lp = def.lengan === 'pendek', cp = def.celanaPendek || def.panjangCelana === 'pendek';
+    // jenis tubuh (def.tubuh): pria (bawaan) | wanita | gemuk | kurus | tua (bungkuk, uban) | anak; boleh juga def.wanita/def.gemuk/def.tua/def.kurus
+    const tb = def.tubuh || 'pria', anak = tb === 'anak', wanita = tb === 'wanita' || !!def.wanita, tua = tb === 'tua' || !!def.tua, kurus = tb === 'kurus' || !!def.kurus;
+    const R = this.R = .2 * (def.kepalaSkala ?? (anak ? 1.24 : 1.1)), gemuk = (def.gemuk || tb === 'gemuk') ? 1.22 : kurus ? .86 : 1, bahuX = (wanita ? .9 : 1) * (kurus ? .93 : 1);
+    this.tua = tua; this.wanita = wanita; this.gemuk = (def.gemuk || tb === 'gemuk') ? 1.22 : 1;
+    this.skala = (o.skala ?? 1) * (def.tinggi ?? 1) * (anak ? .62 : tua ? .95 : wanita ? .96 : 1);
+    const KULIT = ['#F2C29A', '#E6B088', '#D9A07A', '#F6D3B3', '#C98E66'];
+    const kulit = def.kulit || KULIT[this.benih % KULIT.length], baju = def.baju || P.utama, celana = def.celana || campur(P.gelap, '#33415C', .6), sepatu = def.sepatu || '#3A3A48';
+    if (tua && !def.warnaRambut) def.warnaRambut = '#D6D2CA';
+    if (!def.rambut) def.rambut = wanita ? (tua ? 'konde' : 'panjang') : 'pendek';
+    const kerahJenis = def.kerah || 'kaos', lp = def.lengan === 'pendek' || kerahJenis === 'singlet', cp = def.celanaPendek || def.panjangCelana === 'pendek';
+    // motif baju/rok (tekstur kanvas): kotak garis batik bunga polkadot
+    const petaBaju = def.motif ? teksturMotif(def.motif, baju, def.warnaMotif) : null, petaRok = def.motifRok ? teksturMotif(def.motifRok, def.rok || celana, def.warnaMotifRok) : null;
+    const bajuX = petaBaju ? { warna: '#ffffff', peta: petaBaju, unik: true, tepi: campur(baju, P.gelap, .78) } : {};
     const M = (geo, wr, x = {}) => mesh3(geo, Object.assign({ warna: wr }, x));
+    const ML = (geo, wr, x = {}) => mesh3(geo, Object.assign({ warna: wr }, x, { tepi: def.garisAnggota ? x.tepi : false }));   // ruas lengan/kaki tanpa garis tepi: tidak tampak seperti boneka kayu bersambung
     // --- kerangka
     const akar = this.akar = new THREE.Group();
     const pinggul = this.pinggul = new THREE.Group(); pinggul.position.y = .86; akar.add(pinggul);
@@ -86,21 +125,28 @@ class Tokoh3D {
     const kepala = this.kepala = new THREE.Group(); kepala.position.y = .07; leher.add(kepala);
     const kepalaIsi = this.kepalaIsi = new THREE.Group(); kepalaIsi.position.y = R * .95; kepala.add(kepalaIsi);
     // --- badan: profil bubut (lathe) dipipihkan depan-belakang
-    const prof = [[.0, -.06], [.15, -.06], [.165, 0], [.17, .12], [.178, .26], [.185, .38], [.17, .47], [.12, .52], [.05, .535], [0, .54]].map(([x, y]) => new THREE.Vector2(x * gemuk, y));
-    const gBadan = geoSimpan(`badan|${gemuk}`, () => new THREE.LatheGeometry(prof, segQ(28)));
-    const mBadan = this.mBadan = M(gBadan, baju); mBadan.scale.z = .74; badan.add(mBadan);
-    if (def.rok) { const rk = M(geoSilinder(.17 * gemuk, .3 * gemuk, .36, 28), def.rok); rk.position.y = -.16; rk.scale.z = .8; badan.add(rk); this.mPinggul = rk; }
+    const prof = (wanita ? [[.0, -.06], [.16, -.06], [.17, 0], [.148, .14], [.158, .26], [.17, .36], [.152, .46], [.11, .52], [.05, .535], [0, .54]]
+                         : [[.0, -.06], [.15, -.06], [.165, 0], [.17, .12], [.178, .26], [.185, .38], [.17, .47], [.12, .52], [.05, .535], [0, .54]]).map(([x, y]) => new THREE.Vector2(x * gemuk * (kurus ? .92 : 1), y));
+    const gBadan = geoSimpan(`badan|${gemuk}|${wanita}|${kurus}`, () => { const g = new THREE.LatheGeometry(prof, segQ(28)); if (gemuk > 1.1) perutkan(g); return g; });
+    const mBadan = this.mBadan = M(gBadan, baju, bajuX); mBadan.scale.z = .74; badan.add(mBadan);
+    if (gemuk > 1.1) { const pr = this.mPerut = new THREE.Mesh(geoBola(.17, 16, 12), new THREE.MeshBasicMaterial()); pr.visible = false; pr.position.set(0, .15, .07); pr.scale.set(1, .9, .8); badan.add(pr); }   // perut menyatu di profil badan; bola ini hanya bayangan tabrak lengan
+    if (def.jubah) {   // jubah panjang sampai tanah (makhluk, dukun, penyihir): kaki tertutup
+      const jp = [[0, .55], [.13, .53], [.24, .4], [.27, .2], [.31, 0], [.37, -.4], [.44, -.84], [0, -.84]].map(([x, y]) => new THREE.Vector2(x * gemuk, y));
+      const mj = M(geoSimpan(`jubah|${gemuk}`, () => new THREE.LatheGeometry(jp, segQ(32))), def.jubah); mj.scale.z = .82; badan.add(mj); this.mJubah = mj;
+    }
+    if (def.rok) { const rk = M(geoSilinder(.17 * gemuk, (def.rokPanjang ? .26 : .3) * gemuk, def.rokPanjang ? .72 : .36, 28), def.rok, petaRok ? { warna: '#ffffff', peta: petaRok, unik: true, tepi: campur(def.rok, P.gelap, .78) } : {}); rk.position.y = def.rokPanjang ? -.34 : -.16; rk.scale.z = .8; badan.add(rk); this.mPinggul = rk; }
     else { const pg = M(geoKotak(.31 * gemuk, .16, .23 * gemuk, .07), celana); pg.position.y = -.04; pinggul.add(pg); this.mPinggul = pg; }
     if (def.sabuk !== false && !def.rok) { const sb = M(geoKotak(.335 * gemuk, .045, .25 * gemuk, .02), campur(celana, P.gelap, .5), { tepi: false }); sb.position.y = .015; pinggul.add(sb); }
     // kerah / pakaian
-    const kerah = def.kerah || 'kaos';
-    if (kerah === 'kaos') { const k = M(geoTorus(.07, .02, 24), campur(baju, P.gelap, .2), { tepi: false }); k.rotation.x = Math.PI / 2; k.position.y = .51; k.scale.z = .8; badan.add(k); }
-    if (kerah === 'kemeja' || kerah === 'jas') {
+    const kerah = kerahJenis;
+    if (kerah === 'kaos' || kerah === 'singlet') { const k = M(geoTorus(.07, .02, 24), campur(baju, P.gelap, .2), { tepi: false }); k.rotation.x = Math.PI / 2; k.position.y = .51; k.scale.z = .8; badan.add(k); }
+    if (kerah === 'kemeja' || kerah === 'jas' || kerah === 'kebaya') {
       const wk = kerah === 'jas' ? (def.warnaKemeja || '#F4F1EA') : (def.warnaKerah || terangkan(baju, .25));
       [-1, 1].forEach(s => { const k = M(geoKotak(.09, .07, .02, .008), wk); k.position.set(s * .045, .5, .115); k.rotation.set(-.35, 0, s * .55); badan.add(k); });
       if (kerah === 'jas') { const dalam = M(geoKotak(.1, .22, .02, .01), wk, { tepi: false }); dalam.position.set(0, .38, .118); badan.add(dalam); }
       if (def.dasi) { const d1 = M(geoKotak(.045, .22, .025, .01), def.dasi); d1.position.set(0, .36, .128); badan.add(d1); }
-      if (kerah === 'kemeja') for (let i = 0; i < 3; i++) { const b = M(geoBola(.012, 10, 8), campur(baju, P.gelap, .45), { tepi: false }); b.position.set(0, .42 - i * .1, .132); badan.add(b); }
+      if (kerah === 'kebaya') { const bros = M(geoBola(.022, 12, 10), '#E8C040', { logam: .7, kasar: .3, tepi: false }); bros.position.set(0, .4, .134); badan.add(bros); }
+      if (kerah === 'kemeja' || kerah === 'kebaya') for (let i = 0; i < 3; i++) { const b = M(geoBola(.012, 10, 8), campur(baju, P.gelap, .45), { tepi: false }); b.position.set(0, .42 - i * .1, .132); badan.add(b); }
     }
     if (kerah === 'hoodie') { const h = M(geoTorus(.1, .045, 24), baju); h.rotation.x = Math.PI / 2 + .4; h.position.set(0, .5, -.06); badan.add(h); const kt = M(geoKotak(.2, .1, .03, .02), campur(baju, P.gelap, .15)); kt.position.set(0, .12, .12); badan.add(kt); }
     if (def.celemek) { const ce = M(geoKotak(.26, .5, .02, .03), def.celemek); ce.position.set(0, .2, .135); badan.add(ce); }
@@ -113,31 +159,38 @@ class Tokoh3D {
     this.kanvasWajah = kanvasBaru(660, 480); this.texWajah = teksturKanvas(this.kanvasWajah); this.kunciWajah = '';
     const gw = new THREE.SphereGeometry(R * 1.006, 48, 32, Math.PI / 2 - 55 * D2R, 110 * D2R, 58 * D2R, 80 * D2R);
     const mw = new THREE.MeshStandardMaterial({ map: this.texWajah, transparent: true, roughness: .55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, envMapIntensity: .4 });
-    const wajah = new THREE.Mesh(gw, mw); wajah.renderOrder = 2; wajah.scale.copy(mk.scale); kepalaIsi.add(wajah);
+    const wajah = new THREE.Mesh(gw, mw); wajah.renderOrder = 2; wajah.scale.copy(mk.scale); if (def.wajah !== false) kepalaIsi.add(wajah);
+    if (def.mataMenyala) [-1, 1].forEach(s => {   // mata menyala (makhluk): bola terang + pendar
+      const az = s * 19 * D2R, th = 92 * D2R, n = new THREE.Vector3(Math.sin(th) * Math.sin(az), Math.cos(th), Math.sin(th) * Math.cos(az));
+      const b = new THREE.Mesh(geoBola(R * .13, 14, 10), new THREE.MeshBasicMaterial({ color: warna3(def.mataMenyala).clone().multiplyScalar(2.2), toneMapped: false })); b.position.copy(n.clone().multiplyScalar(R * 1.0)); kepalaIsi.add(b);
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: teksturPendar(), color: warna3(def.mataMenyala).clone(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); sp.position.copy(b.position); sp.scale.setScalar(R * 1.1); kepalaIsi.add(sp);
+    });
     this.rambut(def, R, M);
     // lengan
     this.lengan = {};
     [['Ki', 1], ['Ka', -1]].forEach(([n, s]) => {
       const bahu = new THREE.Group(); bahu.position.set(s * .182 * gemuk, .165, 0); bahu.rotation.order = 'XZY'; dada.add(bahu);
-      const bola = M(geoBola(.06, 18, 14), baju); bola.scale.set(.95, .9, .9); bahu.add(bola);
-      const atas = M(geoKapsul(.054, .2), lp ? kulit : baju); atas.position.y = -.14; bahu.add(atas);
-      if (lp) { const lgn = M(geoSilinder(.068, .064, .13, 18), baju); lgn.position.y = -.06; bahu.add(lgn); }
+      const bola = ML(geoBola(.06, 18, 14), kerah === 'singlet' ? kulit : baju, kerah === 'singlet' ? {} : bajuX); bola.scale.set(.95, .9, .9); bahu.add(bola);
+      const atas = ML(geoKapsul(.054, .2), lp ? kulit : baju, lp ? {} : bajuX); atas.position.y = -.14; bahu.add(atas);
+      if (lp && kerah !== 'singlet') { const lgn = M(geoSilinder(.068, .064, .13, 18), baju, bajuX); lgn.position.y = -.06; bahu.add(lgn); }
       const siku = new THREE.Group(); siku.position.y = -.28; bahu.add(siku);
-      const bawah = M(geoKapsul(.046, .18), lp ? kulit : baju); bawah.position.y = -.12; siku.add(bawah);
+      const sendi = M(geoBola(.05, 16, 12), lp ? kulit : baju, lp ? { tepi: false } : Object.assign({ tepi: false }, bajuX)); siku.add(sendi);   // sendi siku bulat: tidak terlihat seperti manekin
+      const bawah = ML(geoKapsul(.046, .18), lp ? kulit : baju, lp ? {} : bajuX); bawah.position.y = -.12; siku.add(bawah);
       if (!lp) { const mn = M(geoSilinder(.052, .052, .04, 16), campur(baju, P.gelap, .2), { tepi: false }); mn.position.y = -.235; siku.add(mn); }
       const tangan = new THREE.Group(); tangan.position.y = -.26; siku.add(tangan);
-      const telapak = M(geoBola(.062, 18, 14), kulit); telapak.position.y = -.055; telapak.scale.set(.82, 1.02, .66); tangan.add(telapak);
-      const jempol = M(geoKapsul(.02, .045, 10), kulit); jempol.position.set(-s * .035, -.04, .03); jempol.rotation.set(.5, 0, s * .7); tangan.add(jempol);
+      const telapak = ML(geoBola(.068, 18, 14), kulit); telapak.position.y = -.06; telapak.scale.set(.84, 1.02, .68); tangan.add(telapak);
+      const jempol = M(geoKapsul(.022, .05, 10), kulit); jempol.position.set(-s * .04, -.045, .032); jempol.rotation.set(.5, 0, s * .7); tangan.add(jempol);
       this.lengan[n] = { bahu, siku, tangan, s };
     });
     // kaki
     this.kaki = {};
     [['Ki', 1], ['Ka', -1]].forEach(([n, s]) => {
       const paha = new THREE.Group(); paha.position.set(s * .095 * gemuk, -.04, 0); paha.rotation.order = 'XZY'; pinggul.add(paha);
-      const mp = M(geoKapsul(.078 * Math.sqrt(gemuk), .24), cp ? kulit : (def.rok ? kulit : celana)); mp.position.y = -.19; paha.add(mp);
+      const mp = ML(geoKapsul(.078 * Math.sqrt(gemuk), .24), cp ? kulit : (def.rok ? kulit : celana)); mp.position.y = -.19; paha.add(mp);
       if (cp && !def.rok) { const cl = M(geoSilinder(.088, .09, .18, 18), celana); cl.position.y = -.08; paha.add(cl); }
       const lutut = new THREE.Group(); lutut.position.y = -.38; paha.add(lutut);
-      const mb = M(geoKapsul(.064, .24), (cp || def.rok) ? kulit : celana); mb.position.y = -.18; lutut.add(mb);
+      const sl = M(geoBola(.068, 16, 12), (cp || def.rok) ? kulit : celana, { tepi: false }); lutut.add(sl);   // sendi lutut bulat
+      const mb = ML(geoKapsul(.064, .24), (cp || def.rok) ? kulit : celana); mb.position.y = -.18; lutut.add(mb);
       const tumit = new THREE.Group(); tumit.position.y = -.36; lutut.add(tumit);
       const sp = M(geoKotak(.12, .1, .25, .045), sepatu); sp.position.set(0, -.02, .045); tumit.add(sp);
       const sol = M(geoKotak(.125, .025, .26, .01), def.sol || campur(sepatu, '#ffffff', .55), { tepi: false }); sol.position.set(0, -.065, .045); tumit.add(sol);
@@ -151,6 +204,8 @@ class Tokoh3D {
     akar.position.set(...this.posisiAwal); akar.scale.setScalar(this.skala);
     (o.naik && o.naik.userData && o.naik.userData.jok ? o.naik.userData.jok : (o.induk || dn._induk())).add(akar);
     if (o.naik) { akar.position.set(0, 0, 0); this.naik = true; }
+    if (typeof o.hiasKepala === 'function') { dn._grup.push(this.kepalaIsi); try { o.hiasKepala(dn, this); } finally { dn._grup.pop(); } }   // aksesori sendiri di kepala (koordinat kepala, jari-jari tk.R)
+    if (typeof o.hiasBadan === 'function') { dn._grup.push(this.badan); try { o.hiasBadan(dn, this); } finally { dn._grup.pop(); } }
     this.efek = efekEmosi(this, dn);
     this.yawSkr = null;
   }
@@ -166,17 +221,26 @@ class Tokoh3D {
       return;
     }
     // tudung rambut: batas depan/samping/belakang (theta maks) mengikuti arah, jadi dahi terbuka dan belakang tertutup
-    const batas = { pendek: [.31, .47, .64], poni: [.40, .48, .64], jabrik: [.30, .46, .62], cepak: [.33, .44, .56], panjang: [.31, .5, .66], kuncir: [.30, .47, .63], ikal: [.30, .48, .66] }[jenis] || [.31, .47, .64];
+    const batas = { pendek: [.31, .47, .64], poni: [.40, .48, .64], jabrik: [.30, .46, .62], cepak: [.33, .44, .56], panjang: [.31, .5, .66], kuncir: [.30, .47, .63], ikal: [.30, .48, .66], konde: [.29, .46, .62] }[jenis] || [.31, .47, .64];
     const tebal = jenis === 'cepak' ? 1.025 : 1.065;
     const g = new THREE.SphereGeometry(R * tebal, 44, 22, 0, Math.PI * 2, 0, Math.PI * .64), pos = g.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), r = Math.hypot(x, y, z), th = Math.acos(jepit(y / r, -1, 1)), az = Math.atan2(x, z);
-      const k = (1 - Math.cos(az)) / 2, lim = (k < .5 ? lerp(batas[0], batas[1], k * 2) : lerp(batas[1], batas[2], (k - .5) * 2)) * Math.PI;
+      const k = (1 - Math.cos(az)) / 2, gel = jenis === 'cepak' ? 0 : .022 * Math.max(0, Math.cos(az)) * Math.sin(az * 11 + 1),   // tepi depan bergelombang (helai poni), bukan garis lurus topi renang
+        lim = ((k < .5 ? lerp(batas[0], batas[1], k * 2) : lerp(batas[1], batas[2], (k - .5) * 2)) + gel) * Math.PI;
       const th2 = th / (Math.PI * .64) * lim, rr = R * tebal * (1 + (jenis === 'cepak' ? 0 : .04 * Math.cos(th2 * 1.2)));
       pos.setXYZ(i, Math.sin(th2) * Math.sin(az) * rr, Math.cos(th2) * rr * 1.04, Math.sin(th2) * Math.cos(az) * rr);
     }
     g.computeVertexNormals();
     K0.add(M(g, wr));
+    if (false) {   // (dinonaktifkan: jumput di dahi terbaca seperti alis tebal; diganti tepi rambut bergelombang di bawah)
+      const n = jenis === 'cepak' ? 4 : 6;
+      for (let i = 0; i < n; i++) { const az = (i - (n - 1) / 2) * (jenis === 'cepak' ? .32 : .27), th = (.3 + Math.abs(az) * .06) * Math.PI;
+        const j = M(geoBola(R * (jenis === 'cepak' ? .14 : .19), 14, 10), wr, { tepi: i === 0 || i === n - 1 ? undefined : false }); j.position.set(Math.sin(th) * Math.sin(az) * R * 1.05, Math.cos(th) * R * 1.09, Math.sin(th) * Math.cos(az) * R * 1.05); j.scale.set(1.25, .6, .7); j.lookAt(j.position.clone().multiplyScalar(2)); K0.add(j); }
+      [-1, 1].forEach(s => { const j = M(geoBola(R * .2, 12, 10), wr, { tepi: false }); j.position.set(s * R * .9, R * .32, -R * .08); j.scale.set(.6, .9, 1.1); K0.add(j); });
+      for (let i = 0; i < 5; i++) { const az = Math.PI + (i - 2) * .45, th = .22 * Math.PI; const j = M(geoBola(R * .26, 12, 10), wr, { tepi: false }); j.position.set(Math.sin(th) * Math.sin(az) * R * .98, Math.cos(th) * R * 1.08, Math.sin(th) * Math.cos(az) * R * .98); j.scale.set(1, .7, 1); K0.add(j); }
+    }
+    if (jenis === 'konde') { const b = M(geoBola(R * .4, 20, 14), wr); b.position.set(0, R * .25, -R * 1.02); b.scale.set(1, .85, .8); K0.add(b); const tusuk = M(geoKapsul(R * .035, R * .8, 8), '#C8A040', { tepi: false, logam: .6 }); tusuk.position.set(0, R * .3, -R * 1.1); tusuk.rotation.z = 1.2; K0.add(tusuk); }
     if (jenis === 'poni') for (let i = -2; i <= 2; i++) { const p = M(geoBola(R * .2, 16, 10), wr); const az = i * .26, th = .36 * Math.PI; p.position.set(Math.sin(th) * Math.sin(az) * R * 1.03, Math.cos(th) * R * 1.07, Math.sin(th) * Math.cos(az) * R * 1.03); p.scale.set(1.2, .75, .6); p.lookAt(p.position.clone().multiplyScalar(2)); K0.add(p); }
     if (jenis === 'jabrik') for (let i = 0; i < 9; i++) { const az = (i / 9) * Math.PI * 2 + .2, th = (.12 + (i % 3) * .1) * Math.PI; const c = M(geoKerucut(R * .17, R * .5, 12), wr); const n = new THREE.Vector3(Math.sin(th) * Math.sin(az), Math.cos(th), Math.sin(th) * Math.cos(az)); c.position.copy(n.clone().multiplyScalar(R * 1.1)); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n.add(new THREE.Vector3(0, .6, -.3)).normalize()); K0.add(c); }
     if (jenis === 'panjang') { const tirai = M(new THREE.CylinderGeometry(R * 1.04, R * 1.18, .46, 36, 1, true, .95, Math.PI * 2 - 1.9), wr, { ganda: true }); tirai.position.y = -R * .9; K0.add(tirai); const ujung = M(new THREE.TorusGeometry(R * 1.11, .03, 10, 36, Math.PI * 2 - 1.9), wr); ujung.rotation.set(Math.PI / 2, 0, Math.PI / 2 + .95); ujung.position.y = -R * .9 - .23; K0.add(ujung); }
@@ -231,9 +295,10 @@ class Tokoh3D {
     const al = ex.alis || [0, 0, 0], naik = (al[2] || 0) * .45 * 6;
     [-1, 1].forEach((s, i) => {
       const cx = X(s * 19), cy = Y(76) + naik, dalam = -(al[s > 0 ? 0 : 1] || 0) * 3 * 6;
-      c.strokeStyle = def.warnaAlis || campur(def.warnaRambut || '#2B1B12', '#000', .2); c.lineWidth = 15; c.lineCap = 'round';
+      c.strokeStyle = def.warnaAlis || campur(def.warnaRambut || '#2B1B12', '#000', .2); c.lineWidth = 18; c.lineCap = 'round';
       c.beginPath(); c.moveTo(cx - s * 40, cy + dalam); c.quadraticCurveTo(cx, cy - 9 + dalam * .45, cx + s * 40, cy + 2); c.stroke();
     });
+    if (this.tua) { c.strokeStyle = alfa(tinta, .45); c.lineWidth = 5; [-1, 1].forEach(s => { c.beginPath(); c.arc(X(s * 19), Y(92) + 36, 34, Math.PI * .2, Math.PI * .8); c.stroke(); c.beginPath(); c.moveTo(X(s * 33), Y(100)); c.lineTo(X(s * 36), Y(108)); c.stroke(); }); c.beginPath(); c.moveTo(X(-10), Y(64)); c.quadraticCurveTo(X(0), Y(62), X(10), Y(64)); c.stroke(); }
     // mulut
     const mx = X(0), my = Y(117), m = ex.mulut || 'datar';
     c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = tinta; c.lineWidth = 8;
@@ -317,11 +382,16 @@ class Tokoh3D {
     if (yaw === null) {
       const hv = o.hadap === undefined ? 'kameraAwal' : o.hadap;
       if (Array.isArray(hv)) { const q = nilaiDi(hv, t, a, .5); const ya = typeof q.a === 'number' ? q.a : this.sudutKe(q.a), yb = q.b === null ? ya : (typeof q.b === 'number' ? q.b : this.sudutKe(q.b)); let dd = ((ya - yb + 540) % 360) - 180; yaw = yb + dd * q.k; }
-      else yaw = typeof hv === 'number' ? hv : this.sudutKe(hv);
+      else { yaw = typeof hv === 'number' ? hv : this.sudutKe(hv);
+        if (typeof hv === 'string' && this.dn.para[hv] && o.cheat !== false) { const yk = this.sudutKe('kameraAwal'), dd = ((yk - yaw + 540) % 360) - 180; yaw += jepit(dd, -60, 60) * .3; } }   // 'cheat' ke kamera (gaya film): lawan bicara tetap terlihat 3/4
     }
     if (this.naik) { x = 0; y = 0; z = 0; yaw = o.hadap ?? 0; }
     // penanda pose
     if (p.goyang) { lKa[3] += Math.sin(T * 11) * 22; lKa[1] += Math.sin(T * 11) * 6; }
+    if (p.goyangKi) { lKi[3] += Math.sin(T * 11 + 1) * 22; lKi[1] += Math.sin(T * 11 + 1) * 6; }
+    if (p.kibas) { lKa[3] += Math.sin(T * 14) * 25; lKa[2] += Math.sin(T * 14) * 10; }
+    if (p.aduk) { lKa[0] += Math.sin(T * 5) * 10; lKa[1] += Math.cos(T * 5) * 8; lKi[0] += Math.sin(T * 5) * 8; lKi[1] += Math.cos(T * 5) * 6; }
+    if (p.isak) { const s = Math.abs(Math.sin(T * 9)); badan[0] += s * 3; kepala[0] += s * 4; }
     if (p.gores) { lKa[3] += Math.sin(T * 8.5) * 9 + Math.sin(T * 3.1) * 6; lKa[2] += Math.sin(T * 6.3) * 6; }
     if (p.ketik) { lKa[3] += Math.max(0, Math.sin(T * 17)) * 8; lKi[3] += Math.max(0, Math.sin(T * 15 + 1)) * 8; }
     if (p.tepuk) { const c = Math.abs(Math.sin(T * 7)); lKa[2] += c * 20; lKi[2] += c * 20; }
@@ -335,6 +405,9 @@ class Tokoh3D {
       kKi[2] = lerp(kKi[2], 6 + Math.max(0, Math.cos(fase)) * (j.lari ? 75 : 42), langkah); kKa[2] = lerp(kKa[2], 6 + Math.max(0, -Math.cos(fase)) * (j.lari ? 75 : 42), langkah);
       bob += Math.abs(Math.cos(fase)) * (j.lari ? .05 : .028) * langkah; badan[2] += Math.sin(fase) * 6 * langkah; badan[0] += (j.lari ? 8 : 2) * langkah;
     }
+    if (this.gemuk > 1.1) { lKi[1] += 7; lKa[1] += 7; }   // gemuk: lengan menggantung di sisi perut, bukan menembusnya
+    if (this.tua && !p.duduk && !p.rebah) { badan[0] += 6; kepala[0] -= 6; kKi[2] += 8; kKa[2] += 8; kKi[0] += 4; kKa[0] += 4; }   // tua: sedikit bungkuk, lutut sedikit tertekuk
+    if (!p.membungkuk && badan[0] > 20 && !['membungkuk', 'ambil'].includes(pv.a)) badan[0] = 20 + (badan[0] - 20) * .3;   // condong berlebihan (pose sedih + tua) dibatasi
     // akting otomatis: napas, berat badan berpindah, kepala hidup, mata melirik
     const napas = Math.sin(T * Math.PI * 2 * .3 + bn), hidup = o.hidup !== false;
     if (hidup) {
@@ -351,8 +424,8 @@ class Tokoh3D {
       const gname = pv.b ? null : pv.a;
       if (o.gestur !== false && gname && GESTUR_POSE.has(gname)) {
         const ka = (derau(T * .8 + bn) + 1) / 2, ki = (derau(T * .7 + bn + 20) + 1) / 2, duduk = !!p.duduk;
-        lKa[0] += ka * (duduk ? 25 : 38); lKa[3] += ka * 55; lKa[2] += ka * 25; lKa[1] += ka * 8;
-        lKi[0] += ki * ki * (duduk ? 18 : 28); lKi[3] += ki * ki * 45; lKi[2] += ki * 20;
+        lKa[0] += ka * (duduk ? 25 : 34); lKa[3] += ka * 50; lKa[2] += ka * 4 - Math.max(0, lKa[2] - 18) * ka * .6; lKa[1] += ka * 10;   // lengan bawah ke depan-luar (menjelaskan), tidak melipat ke dada
+        lKi[0] += ki * ki * (duduk ? 18 : 26); lKi[3] += ki * ki * 42; lKi[2] += ki * 3 - Math.max(0, lKi[2] - 18) * ki * .6; lKi[1] += ki * 8;
         badan[0] += ka * 3; badan[2] += (ka - ki) * 6;
       }
     }
@@ -366,6 +439,7 @@ class Tokoh3D {
         const kk = lv.b ? lv.k : 1; kepala[2] += dy * kk; kepala[0] += dp * kk; badan[2] += dy * .25 * kk;
       }
     }
+    if (!p.membungkuk && !['membungkuk', 'ambil', 'tidur'].includes(pv.a)) { kepala[0] = jepit(kepala[0], -34, 36); kepala[2] = jepit(kepala[2], -70, 70); }   // leher wajar: pose menunduk + lihat ke tokoh pendek dulu menekuk kepala ±52° (seperti patah)
     // pasang ke sendi
     const sk = this.skala * k;
     if (this.yawSkr === null) this.yawSkr = yaw;
@@ -391,7 +465,9 @@ class Tokoh3D {
       const ob = this.pegangan[sisi].obj; if (ob && ob.userData.gerak) ob.userData.gerak(t, T);
     });
     // anti-tembus: kaki menapak lantai/permukaan pijak, lalu lengan + tangan + properti didorong keluar dari badan, kepala, paha, tokoh lain, dan benda padat
-    if (o.padat !== false) { this.tapakKaki(); this.lenganTakTembus(); }
+    if (o.padat !== false) this.tapakKaki();
+    if (o.raih || o.tunjukKe) this.raihSasaran(t);   // tangan ke sasaran (IK), sebelum anti-tembus
+    if (o.padat !== false) this.lenganTakTembus();
     // wajah
     const ev = nilaiDi(o.ekspresi || 'senang', t, a, .3), ea = EKSPRESI[ev.a] || EKSPRESI.senang, eb = ev.b ? EKSPRESI[ev.b] : null;
     const ex = eb ? { alis: ea.alis.map((v, i) => lerp(eb.alis[i], v, ev.k)), mata: ev.k > .5 ? ea.mata : eb.mata, mulut: ev.k > .5 ? ea.mulut : eb.mulut } : ea;

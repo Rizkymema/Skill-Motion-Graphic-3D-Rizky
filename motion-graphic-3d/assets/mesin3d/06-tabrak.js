@@ -116,11 +116,60 @@ Tokoh3D.prototype.rintanganLengan = function (bahu) {
   const sk = this.akar.scale.x, r = [];
   r.push({ m: this.mBadan, tambah: -.004 * sk, diri: true }, { m: this.mKepala, tambah: .016 * sk, diri: false });
   if (this.mPinggul) r.push({ m: this.mPinggul, tambah: -.004 * sk, diri: true });
+  if (this.mPerut) r.push({ m: this.mPerut, tambah: -.006 * sk, diri: true });   // perut gemuk (bayangan tabrak tak terlihat)
   for (const n of ['Ki', 'Ka']) r.push({ m: this.kaki[n].mPaha, tambah: 0, diri: true }, { m: this.kaki[n].mBetis, tambah: 0, diri: true });
   for (const id in this.dn.para) { const lain = this.dn.para[id]; if (lain === this || !lain.akar.visible || lain.o.padat === false) continue; r.push({ m: lain.mBadan, tambah: .005, diri: false }, { m: lain.mKepala, tambah: .02, diri: false }); }
   const jangkau = .85 * sk, cap = this.dn._cap;
   for (const m of this.dn.padat || []) { const u = siapRintang(m, cap); if (u._pusat.distanceTo(bahu) < u._jari + jangkau && jarakKe(m, bahu, cap) < jangkau) r.push({ m, tambah: .006, diri: false, dunia: true }); }   // jarak sebenarnya (gedung besar yang jauh tidak ikut)
   return r;
+};
+/** LM umum atas 4 sudut lengan v (diubah di tempat): sisaFn(v) → larik sisa; batas = perubahan maks. (derajat) dari v awal */
+Tokoh3D.prototype.lmLengan = function (L, v, sisaFn, o = {}) {
+  const v0 = v.slice(), BOBOT = o.bobot || [1, 1, .3, .55], LANGKAH = 1.5, E = r => r.reduce((s, x) => s + x * x, 0), batas = o.batas ?? 85;
+  let r0 = sisaFn(v), e0 = E(r0), lam = -1;
+  for (let iter = 0; iter < (o.iter ?? 8) && e0 > (o.ambang ?? 2.5e-6); iter++) {
+    const J = [0, 1, 2, 3].map(j => { const vj = v.slice(); vj[j] += LANGKAH; const rj = sisaFn(vj); return rj.map((x, k) => (x - r0[k]) / LANGKAH); });
+    const A = [0, 1, 2, 3].map(i => [0, 1, 2, 3].map(j => J[i].reduce((s, x, k) => s + x * J[j][k], 0))), g = [0, 1, 2, 3].map(i => J[i].reduce((s, x, k) => s + x * r0[k], 0));
+    if (lam < 0) lam = 1e-3 * (A[0][0] + A[1][1] + A[2][2] + A[3][3]) / 4 + 1e-12;
+    let maju = false;
+    for (let coba = 0; coba < 4 && !maju; coba++) {
+      const M = A.map((row, i) => row.map((x, j) => x + (i === j ? lam / BOBOT[i] : 0))), d = selesaikan4(M, g.map(x => -x));
+      const v1 = v.map((x, j) => v0[j] + jepit(x + jepit(d[j], -30, 30) - v0[j], -batas, batas)), r1 = sisaFn(v1), e1 = E(r1);
+      if (e1 < e0) { for (let j = 0; j < 4; j++) v[j] = v1[j]; r0 = r1; e0 = e1; lam *= .4; maju = true; } else lam *= 5;
+    }
+    if (!maju) break;
+  }
+  this.aturLengan(L, v);
+};
+/** raih / tunjukKe: tangan ke sasaran (tokoh, benda bernama, rujukan 'id.kepala', atau [x,y,z]); bertransisi halus 0,35 dtk
+    tunjukKe: lengan lurus mengarah ke sasaran (jari ke arah sasaran) · raih: { ka, ki }: telapak ke sasaran (berhenti di permukaan oleh anti-tembus) */
+Tokoh3D.prototype.raihSasaran = function (t) {
+  const o = this.o, a = this.a, S = this.sudut, dn = this.dn, sk = this.akar.scale.x;
+  this.akar.updateWorldMatrix(true, true);
+  const titikSasaran = (ref, tunjuk) => {
+    if (Array.isArray(ref) && typeof ref[0] === 'number') return new THREE.Vector3(...ref);
+    const s = String(ref); if (dn.para[s] && dn.para[s] !== this) return new THREE.Vector3(...dn.titik(s + (tunjuk ? '.kepala' : '')));
+    if (dn.nama[s]) { const bx = new THREE.Box3().setFromObject(dn.nama[s]); if (!bx.isEmpty()) return bx.getCenter(new THREE.Vector3()); }
+    return new THREE.Vector3(...dn.titik(s));
+  };
+  const sudutUntuk = (sisi, ref, tunjuk, v0) => {
+    if (ref === null || ref === undefined) return v0.slice();
+    const L = this.lengan[sisi], v = v0.slice(), bahu = L.bahu.getWorldPosition(new THREE.Vector3()), tuju = titikSasaran(ref, tunjuk);
+    const P = tunjuk ? bahu.clone().add(tuju.clone().sub(bahu).normalize().multiplyScalar(.62 * sk)) : tuju;
+    const lok = tunjuk ? [0, -.11, 0] : [0, -.06, 0];
+    this.lmLengan(L, v, vv => { this.aturLengan(L, vv); const hnd = new THREE.Vector3(...lok).applyMatrix4(L.tangan.matrixWorld); return [hnd.x - P.x, hnd.y - P.y, hnd.z - P.z, tunjuk ? (vv[3] || 0) * .0015 : 0, (vv[2] - v0[2]) * .0004]; }, { iter: 10, ambang: 1e-6, batas: 175, bobot: [1, 1, .5, .8] });
+    return v.slice();
+  };
+  const tugas = [];
+  if (o.tunjukKe) tugas.push(['Ka', nilaiDi(o.tunjukKe, t, a, .35), true, x => x]);
+  if (o.raih) for (const [sisi, kunciSisi] of [['Ka', 'ka'], ['Ki', 'ki']]) tugas.push([sisi, nilaiDi(o.raih, t, a, .35), false, x => (x && typeof x === 'object' && !Array.isArray(x) ? x[kunciSisi] : null)]);
+  for (const [sisi, v, tunjuk, ambil] of tugas) {
+    const asli = sisi === 'Ka' ? S.lKa : S.lKi, v0 = asli.slice(), keA = ambil(v.a);
+    if ((keA === null || keA === undefined) && (v.k >= 1 || ambil(v.b) == null)) continue;
+    const tujuA = sudutUntuk(sisi, keA, tunjuk, v0), dariB = v.k < 1 ? sudutUntuk(sisi, ambil(v.b), tunjuk, v0) : tujuA;
+    for (let j = 0; j < 4; j++) asli[j] = lerp(dariB[j], tujuA[j], v.k);
+    this.aturLengan(this.lengan[sisi], asli);
+  }
 };
 /* Levenberg–Marquardt kecil atas 4 sudut lengan [maju, samping, putar, tekuk]: meminimalkan jumlah kuadrat kedalaman tembus SEMUA titik lengan
    terhadap SEMUA rintangan sekaligus (tangan yang terjepit antara meja dan paha mencari celah bebas, bukan bolak-balik), dengan redaman yang
@@ -201,6 +250,8 @@ Dunia3D.prototype.periksaTembus = function () {
   for (let i = 0; i < daftar.length; i++) for (let j = i + 1; j < daftar.length; j++) {
     const A = daftar[i], B = daftar[j], ov = A.box.clone().intersect(B.box); if (ov.isEmpty()) continue;
     const s = ov.getSize(new THREE.Vector3()); if (Math.min(s.x, s.y, s.z) < TOL) continue;
+    // toleransi: benda lunak (karung) saling menekan ±8 cm; benda menempel di dinding ruang (pintu, papan, jam, rak) ±15 cm
+    const lunak = A.b.userData.lunak || B.b.userData.lunak, dinding = A.b.userData.jenis === 'ruang' || B.b.userData.jenis === 'ruang', tol = dinding ? .15 : lunak ? .08 : TOL;
     let tembus = false;
     for (const [P1, P2] of [[A, B], [B, A]]) { if (tembus) break;
       for (const m of P1.ms) { if (tembus) break; const bb = m.geometry.boundingBox || (m.geometry.computeBoundingBox(), m.geometry.boundingBox);
@@ -208,13 +259,14 @@ Dunia3D.prototype.periksaTembus = function () {
           const p = new THREE.Vector3(lerp(bb.min.x, bb.max.x, .15 + a * .35), lerp(bb.min.y, bb.max.y, .15 + c * .35), lerp(bb.min.z, bb.max.z, .15 + e * .35)).applyMatrix4(m.matrixWorld);
           if (!ov.containsPoint(p)) continue;
           if (jarakKe(m, p, cap) > 0) continue;   // titik di dalam benda A (benda tipis pun ikut)
-          for (const m2 of P2.ms) if (jarakKe(m2, p, cap) < -TOL) { tembus = true; break; }
+          for (const m2 of P2.ms) if (jarakKe(m2, p, cap) < -tol) { tembus = true; break; }
         } } }
     if (tembus) catat(`${namaBenda(A.b)} dan ${namaBenda(B.b)} saling menembus — geser salah satu atau ubah ukuran/anim`);
   }
-  // 3. kamera di dalam / terlalu dekat benda atau kepala tokoh
+  // 3. kamera di dalam / terlalu dekat benda atau kepala tokoh, atau di bawah lantai
   const kp = this.kamera.position;
-  for (const m of padat) { const u = siapRintang(m, cap); if (u._pusat.distanceTo(kp) > u._jari + .2) continue; if (jarakKe(m, kp, cap) < .12) catat(`kamera di dalam/terlalu dekat ${namaBenda(m.userData.benda)} (benda terpotong) — mundurkan atau geser kamera`); }
+  if (this._adaLantai && !this.a.bawahLantai && kp.y < this.lantaiDi(kp.x, kp.z) + .03) catat('kamera di bawah lantai (latar kosong) — naikkan kamera');
+  for (const m of padat) { if (m.userData.dindingRuang) continue; const u = siapRintang(m, cap); if (u._pusat.distanceTo(kp) > u._jari + .2) continue; if (jarakKe(m, kp, cap) < .12) catat(`kamera di dalam/terlalu dekat ${namaBenda(m.userData.benda)} (benda terpotong) — mundurkan atau geser kamera`); }
   for (const id in this.para) { const tk = this.para[id]; if (tk.akar.visible && (jarakKe(tk.mKepala, kp, cap) < .1 || jarakKe(tk.mBadan, kp, cap) < .1)) catat(`kamera menembus tokoh "${id}" — mundurkan kamera`); }
   return hasil;
 };
@@ -222,5 +274,5 @@ Dunia3D.prototype.periksaTembus = function () {
 function periksaTembus3D() { const out = []; for (const dn of M3.digambar || []) for (const s of dn.periksaTembus()) out.push(`adegan "${dn.a.id}": ${s}`); return out; }
 
 /* --- nama jenis benda (untuk pesan cek): d.motor(…) → 'motor', d.kotak(…) → 'kotak', nama: '…' menang --- */
-['kotak', 'bola', 'silinder', 'kapsul', 'kerucut', 'donat', 'bidang', 'ekstrusi', 'pohon', 'semak', 'batu', 'rumah', 'gedung', 'kota', 'jalan', 'lampuJalan', 'ruang', 'meja', 'kursi', 'sofa', 'kasur', 'rak', 'tv', 'laptop', 'hp', 'papan', 'ikon', 'koin', 'uang', 'batang', 'pai', 'panah', 'motor', 'mobil', 'warung', 'jam', 'kardus', 'mangkuk', 'gelas', 'buku', 'grup']
+['kotak', 'bola', 'silinder', 'kapsul', 'kerucut', 'donat', 'bidang', 'ekstrusi', 'pohon', 'semak', 'batu', 'rumah', 'gedung', 'kota', 'jalan', 'lampuJalan', 'ruang', 'meja', 'kursi', 'sofa', 'kasur', 'rak', 'tv', 'laptop', 'hp', 'papan', 'ikon', 'koin', 'uang', 'batang', 'pai', 'panah', 'motor', 'mobil', 'warung', 'jam', 'kardus', 'mangkuk', 'gelas', 'buku', 'grup', 'nasi', 'karung', 'timbangan', 'pintu', 'jeriken', 'ember', 'drum', 'gentong', 'peti', 'lampuGantung', 'rakBarang']
   .forEach(n => { const asli = DP[n]; if (typeof asli !== 'function') return; DP[n] = function (...arg) { const r = asli.apply(this, arg); if (r && r.isObject3D) { if (n !== 'grup' || !r.userData.jenis) r.userData.jenis = n; const o = arg.find(x => x && typeof x === 'object' && !Array.isArray(x) && !x.isObject3D); if (o && o.nama) r.userData.namaBenda = o.nama; if (o && o.padat === false) r.userData.padatMati = true; } return r; }; });

@@ -24,13 +24,13 @@ class Dunia3D {
     const L = this.L, C3 = this.C3;
     this.ekspos = this.G.ekspos * (C3.ekspos ?? 1);
     // cahaya: langit (hemisfer, sisi bayang berwarna) + matahari (bayangan lembut) + cahaya tepi dari belakang
-    this.hemi = new THREE.HemisphereLight(warna3(campur(L.kabut, '#ffffff', .3)).clone(), warna3(L.bayang).clone(), C3.hemi * (L.kuat ?? 1));
+    this.hemi = new THREE.HemisphereLight(warna3(campur(L.kabut, '#ffffff', .3)).clone(), warna3(C3.bayang3 || L.bayang).clone(), C3.hemi * (L.kuat ?? 1));   // bayang3: bayang dingin di keadaan gelap (kontras hangat-dingin)
     this.scene.add(this.hemi);
     this.matahari = new THREE.DirectionalLight(warna3(L.warna).clone(), C3.matahari * (L.kuat ?? 1));
     const sm = this.matahari.shadow; this.matahari.castShadow = C3.matahari > 0;
     sm.mapSize.set(2048, 2048); sm.bias = -.0004; sm.normalBias = .03; sm.radius = 3;
     this.scene.add(this.matahari); this.scene.add(this.matahari.target);
-    this.cahayaTepi = new THREE.DirectionalLight(warna3(L.tepi).clone(), C3.tepi);
+    this.cahayaTepi = new THREE.DirectionalLight(warna3(C3.warnaTepi || L.tepi).clone(), C3.tepi);
     this.scene.add(this.cahayaTepi); this.scene.add(this.cahayaTepi.target);
     // cahaya pengisi lembut dari arah kamera (wajah tidak gelap di bawah lampu atas); tanpa bayangan
     this.cahayaIsi = new THREE.DirectionalLight(warna3(campur(L.warna, '#ffffff', .5)).clone(), C3.isi ?? (C3.sorot ? .16 : .24));
@@ -149,6 +149,7 @@ class Dunia3D {
   _arahMatahari() { const s = (this.L.sudut ?? -40) * D2R, e = (this.C3.tinggi ?? 50) * D2R; const v = [Math.sin(s) * Math.cos(e), Math.sin(e), Math.cos(s) * Math.cos(e) * .85 + .15]; const n = Math.hypot(...v); return v.map(x => x / n); }
   /** studio motion graphic: lantai + dinding belakang melengkung tanpa sambungan (cyclorama), warna keadaan */
   studio(o = {}) {
+    this._adaLantai = true;
     const wr = o.warna || campur(P.latar, '#ffffff', .06), lebar = o.lebar ?? 120, R = o.lengkung ?? 7, zDinding = o.z ?? -9, depan = o.depan ?? 40, tinggi = o.tinggi ?? 70;
     const panjang = depan + (Math.PI / 2) * R + tinggi, segV = 80, g = new THREE.PlaneGeometry(lebar, panjang, 1, segV), pos = g.attributes.position;
     for (let i = 0; i < pos.count; i++) {
@@ -168,6 +169,7 @@ class Dunia3D {
   }
   /** tanah luas: jenis polos|rumput|aspal|ubin|kayu|pasir|beton|karpet, warna, ukuran (m), ulang (m per tekstur) */
   tanah(o = {}) {
+    this._adaLantai = true;   // kamera dijaga tetap di atas lantai (01-inti.js aturKamera3D)
     const jenis = o.jenis || 'polos', bawaanWarna = { rumput: campur(P.utama, '#7FBF4A', .45), aspal: '#545866', pasir: '#E2C38A', beton: '#A9ACB3', ubin: campur(P.terang, P.latar, .35), kayu: '#B8794A', karpet: campur(P.kedua, P.gelap, .35) };
     const wr = o.warna || bawaanWarna[jenis] || this.C3.lantai || campur(P.latar, P.utama, .3), uk = o.ukuran ?? 240;
     const tex = jenis !== 'polos' ? teksturPola(jenis, wr) : null;
@@ -256,8 +258,9 @@ Dunia3D.prototype.cahayaIkutKamera = function () {
 Dunia3D.prototype.perbarui = function (t, T) {
   this.t = t; this.T = T; this._cap = (this._cap || 0) + 1;
   for (const f of this.upd) { try { f(t, T); } catch (e) { if (!this._galat) { this._galat = 1; console.error(e); catatan.push('Galat animasi 3D di adegan ' + this.a.id + ': ' + e.message); } } }
-  for (const id in this.para) this.para[id].perbarui(t, T);
+  // gerak(d, t) adegan SEBELUM tokoh diperbarui: perubahan tokoh di gerak (skala, posisi) berlaku di bingkai yang sama (dulu terlambat 1 bingkai)
   if (this.a.gerak) { try { this.a.gerak(this, t, this.a.d, T); } catch (e) { if (!this._galat2) { this._galat2 = 1; console.error(e); catatan.push('Galat di gerak adegan ' + this.a.id + ': ' + e.message); } } }
+  for (const id in this.para) this.para[id].perbarui(t, T);
 };
 Dunia3D.prototype.daftarWajah = function () {   // wajah tokoh → REG.subjek (cek subtitle menutupi wajah)
   for (const id in this.para) {

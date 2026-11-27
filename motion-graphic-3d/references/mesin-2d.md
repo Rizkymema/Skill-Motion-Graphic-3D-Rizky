@@ -171,6 +171,18 @@ Patokan CPU cloud (1080×1920, ms per bingkai termasuk raster): adegan biasa fla
 - **Musik sintesis** `sintesis`: `pulsa` (kick + hi-hat + bass + pad), `ceria` (pulsa + arpeggio), `tegang` (detak jantung + pad gelap), `pad` (akord panjang). Opsi `bpm`, `kunci` (Hz nada dasar), `akord` (semitone, mis. mayor `[[0,4,7],[5,9,12],[7,11,14],[0,4,7]]`), `vol`, `mulai`, `akhir`. Diredam otomatis saat narasi.
   Opsi segmen musik tambahan: `fadeMasuk` (dtk), `fadeKeluar` (dtk, memudar sampai hening di `akhir`), `potong: true` (terpotong tiba-tiba di `akhir`, untuk efek "musik terputus"). Beberapa segmen boleh bertumpuk (mis. `pad` + `ceria`) supaya instrumen terasa makin kaya.
 - Akhir audio dinormalisasi ±−17 dBFS RMS (±−14 LUFS) dengan pembatas lembut ±−2 dBFS (`normalisasi: false` untuk mematikan).
+- **Musik berkas** (`data-suara.musik` = `{src, vol, redam, ulang}`; `rakit --musik f.mp3 --vol-musik 1.15 --redam-musik .2 --musik-utuh`): diputar sekali (`ulang: false`) atau di-loop; saat tiap kalimat dialog/narasi turun ke `vol × redam` (bawaan .3), **lebih dalam untuk kalimat yang diucapkan pelan** (bisikan, nada dingin: redam × RMS kalimat / median, min. ×.35) supaya suara tetap jelas; memudar di 1,2 dtk terakhir.
+
+### 7b. Musik latar per babak dari Epidemic (sejak 27 Nov 2026: "tambahkan musik pengiring yang bagus dan cocok dari Epidemic")
+Satu lagu datar sepanjang video terasa kosong (uji Timbangan Daging: "Dead Silence" datar + hampir hening ±20 dtk tepat saat konfrontasi). Film memakai musik yang **berganti per babak cerita**. Alat: `scripts/musik_epidemic.py` (kunci Epidemic dari env atau `D:\Sound\mcpsound.md`, tidak dicetak).
+1. **Bagi video jadi 3–5 babak emosi** dari daftar adegan (`cek` → `adegan`), mis. licik/gelap → sedih-tegang → horor membangun → sunyi-sedih penutup. Batas babak = pergantian adegan/suasana.
+2. **Cari** per babak: `musik_epidemic.py cari "sneaky dark suspense" 8 60` (tanpa vokal; baca tag mood/genre). Kata kunci yang terbukti: licik `sneaky dark suspense`, sedih-tegang `sad tense strings` / `dark sad suspense`, horor `creepy horror tension` / `horror suspense build`, sunyi `eerie dark ambient`; ceria `upbeat quirky`, edukasi `curious light corporate`.
+3. **Potong resmi** sepanjang babak + 1–1,5 dtk tumpang: `musik_epidemic.py edit <id> <dtk> _kerja/audio/musik/A.mp3` (EditRecording: akhir alami, bukan dipotong kasar).
+4. **Ukur** (saya tidak bisa mendengar): `musik_epidemic.py ukur A.mp3 B.mp3 …` → kurva energi per 2 dtk. Cocokkan bentuknya ke cerita: hentakan/puncak jatuh di momen kunci (makhluk muncul, klimaks), hening sesaat sebelum kejutan; geser `mulai` potongan 1–3 dtk bila perlu.
+5. **Rakit**: `musik_epidemic.py latar _kerja/audio/musik_latar.mp3 <durasi> A.mp3@0@-20 B.mp3@43@-20 C.mp3@92.5@-19 D.mp3@143.3@-21` (disamakan ke LUFS target, crossfade, dipotong sepanjang video). Babak horor/klimaks −19, babak tenang −21.
+6. **Tanam**: `rakit … --musik _kerja/audio/musik_latar.mp3 --vol-musik 1.15 --redam-musik .2 --musik-utuh`.
+7. **Cek campuran** (render audio saja, ±1 menit): `musik_epidemic.py cek _kerja/film.html` → tiap kalimat rata-rata ≥ +10 dB dan terburuk 0,5 dtk ≥ +6 dB di atas musik+SFX; musik di sela dialog −8 … −12 dB dari suara. Tenggelam → turunkan `--redam-musik`/`--vol-musik`; musik tak terasa → naikkan `--vol-musik`.
+8. Catat kredit (judul — artis per babak) di `musik - kredit.txt` dan deskripsi YouTube. Contoh hasil: Timbangan Daging v4 (`Hasil Video\Motion Graphic 3D\_contoh\2026-11-27 Timbangan Daging v4 musik\`).
 
 ## 8. Transisi (`masuk` adegan berikutnya)
 | Nama | Lama | SFX otomatis | Kapan |

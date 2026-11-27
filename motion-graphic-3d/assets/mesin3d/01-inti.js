@@ -24,13 +24,13 @@ function gaya3D() { return Object.assign({}, GAYA3D_DASAR[K.gaya] || GAYA3D_DASA
    di sini kekuatan + tinggi matahari + langit. sorot = lampu sorot dari atas, sekeliling gelap. */
 const CAHAYA3D = {
   siang:  { matahari: .95, hemi: .42, tepi: .35, tinggi: 52, langit: ['#2F7FD8', '#7DBDF0', '#CFEAF8'], lantai: '#7FB069' },
-  malam:  { matahari: .55, hemi: .4, tepi: .7, tinggi: 48, langit: ['#0B1446', '#1E2C74', '#34489A'], lantai: '#26306A' },
+  malam:  { matahari: .55, hemi: .4, tepi: 1.0, isi: .3, terang: .3, warnaTepi: '#9DB8FF', tinggi: 48, langit: ['#0B1446', '#1E2C74', '#34489A'], lantai: '#26306A' },
   kobalt: { matahari: .85, hemi: .45, tepi: .4, tinggi: 50, langit: ['#1E3388', '#2D4BB0', '#4A6FD0'], lantai: '#2D418E' },
   oranye: { matahari: 1.0, hemi: .38, tepi: .5, tinggi: 30, langit: ['#C9562E', '#E58A48', '#F6C27A'], lantai: '#C87442' },
   hijau:  { matahari: .9, hemi: .42, tepi: .35, tinggi: 50, langit: ['#5FA3C8', '#9FD0D8', '#DDF0DA'], lantai: '#8EBE88' },
-  sorot:  { matahari: 0, hemi: .16, tepi: .45, tinggi: 70, sorot: 2.2, langit: ['#140F0C', '#241B14', '#33261B'], lantai: '#3B2E22' },
-  aula:   { matahari: .75, hemi: .42, tepi: .4, tinggi: 60, langit: ['#4F4448', '#6E5F63', '#8F7F82'], lantai: '#756669' },
-  senja:  { matahari: .95, hemi: .36, tepi: .6, tinggi: 16, langit: ['#3D3F9A', '#B35A8C', '#FF9E5E'], lantai: '#5D4A7A' }
+  sorot:  { matahari: 0, hemi: .26, tepi: .95, isi: .3, terang: .3, warnaTepi: '#A8C0FF', bayang3: '#2E3858', tinggi: 70, sorot: 2.2, langit: ['#140F0C', '#241B14', '#33261B'], lantai: '#3B2E22' },
+  aula:   { matahari: .75, hemi: .42, tepi: .6, terang: .38, bayang3: '#3A3E5E', tinggi: 60, langit: ['#4F4448', '#6E5F63', '#8F7F82'], lantai: '#756669' },
+  senja:  { matahari: .95, hemi: .36, tepi: .7, terang: .4, tinggi: 16, langit: ['#3D3F9A', '#B35A8C', '#FF9E5E'], lantai: '#5D4A7A' }
 };
 
 /* ------------------------------------------------------------- warna + waktu */
@@ -197,8 +197,26 @@ function teksturPola(jenis, wr, o = {}) {
     if (jenis === 'beton') { c.strokeStyle = alfa(campur(wr, '#000', .35), .7); c.lineWidth = 4; c.beginPath(); c.moveTo(0, S / 2); c.lineTo(S, S / 2); c.moveTo(S / 2, 0); c.lineTo(S / 2, S); c.stroke(); }
   }
   else if (jenis === 'garis') { for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? w2 : wr; c.fillRect(i * S / 8, 0, S / 8, S); } }
+  else if (jenis === 'bata') { const nat = campur(wr, '#3A2A22', .45); c.fillStyle = nat; c.fillRect(0, 0, S, S); for (let r = 0; r < 8; r++) for (let k = -1; k < 5; k++) { const x = k * 128 + (r % 2) * 64 + 4, y = r * 64 + 4; c.fillStyle = campur(wr, acak(r * 13 + k) > .5 ? '#000' : '#fff', acak(r * 7 + k * 3) * .14); c.fillRect(x, y, 120, 56); } }
   else if (jenis === 'kotak') { for (let i = 0; i < 64; i++) { c.fillStyle = (i + Math.floor(i / 8)) % 2 ? w2 : wr; c.fillRect((i % 8) * S / 8, Math.floor(i / 8) * S / 8, S / 8, S / 8); } }
   t = teksturKanvas(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.userData.bersama = true; M3.tekstur.set(kunci, t); return t;
+}
+/** motif kain (baju, rok, jarik, sarung): kotak | garis | batik | bunga | polkadot | goni; warna dasar + warna motif */
+function teksturMotif(jenis, wr, wr2) {
+  const kunci = `motif|${jenis}|${wr}|${wr2 || ''}`; let t = M3.tekstur.get(kunci); if (t) return t;
+  const S = 256, cv = kanvasBaru(S, S), c = cv.getContext('2d'), m2 = wr2 || campur(wr, '#ffffff', .55), gelap = campur(wr, '#000000', .3);
+  c.fillStyle = wr; c.fillRect(0, 0, S, S);
+  if (jenis === 'kotak') { c.globalAlpha = .55; c.fillStyle = m2; for (let i = 0; i < 4; i++) { c.fillRect(i * 64 + 20, 0, 22, S); c.fillRect(0, i * 64 + 20, S, 22); } c.globalAlpha = .35; c.fillStyle = gelap; for (let i = 0; i < 4; i++) { c.fillRect(i * 64 + 4, 0, 6, S); c.fillRect(0, i * 64 + 4, S, 6); } }
+  else if (jenis === 'garis') { c.fillStyle = m2; for (let i = 0; i < 6; i++) c.fillRect(0, i * S / 6 + 6, S, 14); }
+  else if (jenis === 'polkadot') { c.fillStyle = m2; for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { c.beginPath(); c.arc(i * 64 + 32 + (j % 2) * 32, j * 64 + 32, 11, 0, 7); c.fill(); } }
+  else if (jenis === 'bunga') { for (let i = 0; i < 9; i++) { const x = acak(i * 3.1) * S, y = acak(i * 7.3) * S; c.fillStyle = m2; for (let k = 0; k < 5; k++) { const a = k * 1.2566; c.beginPath(); c.ellipse(x + Math.cos(a) * 11, y + Math.sin(a) * 11, 9, 6, a, 0, 7); c.fill(); } c.fillStyle = gelap; c.beginPath(); c.arc(x, y, 5, 0, 7); c.fill(); } }
+  else if (jenis === 'batik') {   // kawung + garis parang sederhana
+    c.strokeStyle = m2; c.fillStyle = m2; c.lineWidth = 5;
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { const x = i * 64 + 32, y = j * 64 + 32; for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4; c.beginPath(); c.ellipse(x + Math.cos(a) * 15, y + Math.sin(a) * 15, 13, 7, a, 0, 7); c.stroke(); } c.beginPath(); c.arc(x, y, 4, 0, 7); c.fill(); }
+    c.strokeStyle = gelap; c.lineWidth = 3; for (let i = -4; i < 8; i++) { c.beginPath(); c.moveTo(i * 64, 0); c.lineTo(i * 64 + S, S); c.stroke(); }
+  }
+  else if (jenis === 'goni') { for (let i = 0; i < S; i += 6) { c.fillStyle = alfa(i % 12 ? gelap : m2, .16); c.fillRect(i, 0, 3, S); c.fillRect(0, i, S, 3); } for (let i = 0; i < 900; i++) { c.fillStyle = alfa(acak(i) > .5 ? gelap : m2, .3); c.fillRect(acak(i * 3.3) * S, acak(i * 7.7) * S, 2, 2); } }
+  t = teksturKanvas(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(jenis === 'goni' ? 5 : 3, jenis === 'goni' ? 5 : 2); t.userData.bersama = true; M3.tekstur.set(kunci, t); return t;
 }
 /** tekstur teks (kanvas): {tex, w, h} ukuran piksel. Teks putih bila o.putih (supaya bisa diwarnai bahan). */
 function teksturTeks(s, o = {}) {
@@ -242,6 +260,18 @@ function buang3(obj) {   // lepaskan geometri/bahan/tekstur milik dunia ini (yan
     ms.forEach(m => { if (m.userData && m.userData.bersama) return; ['map', 'emissiveMap', 'alphaMap'].forEach(k => { if (m[k] && !(m[k].userData && m[k].userData.bersama)) m[k].dispose(); }); m.dispose(); });
   });
 }
+/* eksposur otomatis (sekali per adegan, keadaan t = 0 → deterministik): render kecil 54×96, ukur kecerahan rata-rata bagian tengah,
+   setel ekspos ke target keadaan (C3.terang; terang .46, gelap .3). Adegan keruh/gosong tidak terjadi lagi. adegan.ekspos menimpa. */
+function ukurEksposur(dn) {
+  const r = M3.r, a = dn.a; if (!r || a.ekspos !== undefined || K.eksposOtomatis === false) { if (a.ekspos !== undefined) dn.ekspos = a.ekspos; return; }
+  aturKamera3D(dn, a, 0, a.mulai); dn.cahayaIkutKamera();
+  const w = 54, h = Math.round(54 * H / W); r.setSize(w, h, false); r.toneMappingExposure = dn.ekspos; r.shadowMap.needsUpdate = true; r.render(dn.scene, dn.kamera);
+  const gl = r.getContext(), px = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  let jumlah = 0, n = 0;
+  for (let y = Math.floor(h * .15); y < h * .8; y++) for (let x = Math.floor(w * .12); x < w * .88; x++) { const i = (y * w + x) * 4; jumlah += (px[i] * .2126 + px[i + 1] * .7152 + px[i + 2] * .0722) / 255; n++; }
+  const rata = n ? jumlah / n : .4, target = dn.C3.terang ?? .46;
+  if (rata > .01) dn.ekspos *= jepit(Math.pow(target / rata, .65), .78, 1.7);
+}
 function duniaAdegan(a) {
   let dn = M3.dunia.get(a.i);
   if (dn) { M3.dunia.delete(a.i); M3.dunia.set(a.i, dn); return dn; }
@@ -251,6 +281,7 @@ function duniaAdegan(a) {
   catch (e) { console.error('Galat di dunia adegan', a.id, e); catatan.push('Galat di dunia adegan ' + a.id + ': ' + e.message); }
   finally { MEMBANGUN = lama; }
   dn.selesaiBangun();
+  try { ukurEksposur(dn); } catch (e) { console.warn('ukur eksposur', e); }
   M3.dunia.set(a.i, dn);
   while (M3.dunia.size > 4) { const k = M3.dunia.keys().next().value, d0 = M3.dunia.get(k); M3.dunia.delete(k); buang3(d0.scene); }
   return dn;
@@ -261,8 +292,11 @@ function hapusDunia3D() { M3.dunia.forEach(d => buang3(d.scene)); M3.dunia.clear
 function kameraBawaan() { return { dari: [0, 1.45, 5], ke: [0, 1.15, 0], fov: POTRET ? 40 : 30, guling: 0 }; }
 function aturKamera3D(dn, a, t, T) {
   const cam = dn.kamera, k0 = kameraBawaan();
-  let k = a.kamera;
+  let k = a.kamera, bidikan = false;
+  if (k === undefined && Object.keys(dn.para).length) k = a.kamera = { bidik: Object.keys(dn.para)[0], jenis: 'penuh', gerak: 'dorong' };   // tanpa kamera: bidik tokoh pertama
   if (typeof k === 'function') k = k(t, dn);
+  else if (Array.isArray(k) && k.some(e => adaBidikan(e[1]))) { k = kameraDaftarBidikan(dn, a, t); bidikan = true; }   // 07-bidikan.js
+  else if (adaBidikan(k)) { BEKU = metrikBeku(dn, a, 0, 0, k, a.d); try { k = resolBidikan(dn, k, jepit(t / Math.max(.01, a.d)), a) || {}; } finally { BEKU = null; } bidikan = true; }
   else if (Array.isArray(k)) k = kunci3(t, k, a);
   else if (k && k.orbit) {   // orbit: { ke, jarak, tinggi, sudut: [awal, akhir] (derajat, 0 = depan), ease }
     const o = k, s = lerp(o.sudut ? o.sudut[0] : -15, o.sudut ? o.sudut[1] : 15, fe(o.ease || 'inOutSine')(jepit(t / Math.max(.01, a.d)))) * D2R, ke = o.ke || k0.ke, j = o.jarak ?? 6;
@@ -270,13 +304,14 @@ function aturKamera3D(dn, a, t, T) {
   }
   k = Object.assign({}, k0, k || {});
   let dari = k.dari.slice(), ke = typeof k.ke === 'string' ? dn.titik(k.ke) : k.ke.slice();
-  if (a.ikuti) { const p = dn.titikDasar(a.ikuti); for (let i = 0; i < 3; i++) { dari[i] += p[i]; if (typeof k.ke !== 'string') ke[i] += p[i]; } }   // ikuti: dari/ke RELATIF ke benda/tokoh yang diikuti
+  if (a.ikuti && !bidikan) { const p = dn.titikDasar(a.ikuti); for (let i = 0; i < 3; i++) { dari[i] += p[i]; if (typeof k.ke !== 'string') ke[i] += p[i]; } }   // ikuti: dari/ke RELATIF ke benda/tokoh yang diikuti
   let guling = k.guling || 0;
   if (K.kameraHidup !== false && a.kameraHidup !== false) {   // napas kamera (genggam tangan)
     const q = a.i * 7.3; dari[0] += derau(T * .23 + q) * .035; dari[1] += derau(T * .19 + q + 3) * .03; ke[0] += derau(T * .17 + q + 5) * .02; ke[1] += derau(T * .21 + q + 9) * .02; guling += derau(T * .11 + q) * .35;
   }
   if (a.guncang) { const gk = typeof a.guncang === 'function' ? a.guncang(t) : (Array.isArray(a.guncang) ? kunci(t, a.guncang) : a.guncang); if (gk) { const f = Math.floor(T * 30); dari[0] += (acak(f) - .5) * .12 * gk; dari[1] += (acak(f + 9) - .5) * .12 * gk; ke[0] += (acak(f + 4) - .5) * .08 * gk; } }
   cam.fov = k.fov ?? k0.fov; cam.aspect = W / H; cam.near = .05; cam.far = 500; cam.updateProjectionMatrix();
+  if (dn._adaLantai && !a.bawahLantai) { const yl = dn.lantaiDi(dari[0], dari[2]) + .12; if (dari[1] < yl) dari[1] = yl; }   // kamera tidak pernah di bawah lantai (sudut rendah 'rendah' dulu menembus lantai → latar kosong)
   cam.position.set(dari[0], dari[1], dari[2]); cam.up.set(0, 1, 0); cam.lookAt(ke[0], ke[1], ke[2]);
   if (guling) cam.rotateZ(guling * D2R);
   cam.updateMatrixWorld(); dn._ke = ke;
@@ -288,7 +323,7 @@ function gambar3D(c, a, t) {
   const dn = duniaAdegan(a), T = a.mulai + t;
   aturKamera3D(dn, a, t, T);
   dn.perbarui(t, T);
-  aturKamera3D(dn, a, t, T);   // sekali lagi: kamera yang mengikuti tokoh/benda memakai posisi bingkai ini
+  dn._bolehBeku = true; try { aturKamera3D(dn, a, t, T); } finally { dn._bolehBeku = false; }   // sekali lagi: kamera yang mengikuti tokoh/benda memakai posisi bingkai ini (boleh membekukan metrik bidikan)
   dn.cahayaIkutKamera();
   const w = Math.max(2, Math.round(W * SK)), h = Math.max(2, Math.round(H * SK));
   if (r.domElement.width !== w || r.domElement.height !== h) r.setSize(w, h, false);

@@ -14,7 +14,7 @@ Dibaca di Tahap 2. Urutannya: riset → naskah → storyboard (tabel) → konfig
 ## 2. Tabel storyboard (dikirim di chat Tahap 2)
 Satu baris per scene, ringkas:
 
-| # | Waktu | Visual | Kamera | Teks / subtitle | SFX | Masuk |
+| # | Waktu | Visual | Bidikan (siapa · jenis) | Teks / subtitle | SFX | Masuk |
 |---|---|---|---|---|---|---|
 | 1 | 0:00–0:03 | HP 3D raksasa, saldo Rp1.000.000 → Rp0 di layar, koin berjatuhan | dolly keluar 2,6 → 3,4 m, guncang saat nol | "KENAPA KAMU PASTI KALAH?" · sub: Kenapa judol bikin kamu *pasti kalah?* | sub, ketik, riser, impact, glitch | — |
 | 2 | 0:03–0:06 | ruang malam, tokoh di sofa main HP (`naik: sofa`, `dudukHp`), notifikasi di layar HP | dolly masuk ke setengah badan | sub: Semua berawal dari satu notifikasi. | notif, pop | glitch |
@@ -50,6 +50,7 @@ Tulis juga di bawah tabel: hook + logline, sumber, **keadaan + warna dominan tia
 - [ ] Palet konsisten 4–5 warna; warna aksen hanya untuk hal penting.
 - [ ] SFX di setiap kejadian penting; musik berganti suasana di babak emosional.
 - [ ] Subtitle rapi: kecil gaya film, maks. 2 baris, tidak menutupi wajah tokoh.
+- [ ] Tokoh yang bicara selalu terlihat wajahnya (bidikan otomatis; `cek` SALAH bila tidak); tidak ada bidikan yang hanya kaki/punggung/benda menutupi wajah.
 - [ ] 3D: `cek` tanpa SALAH tembus (tokoh/benda/kamera, `references/mesin.md` §9b); bayangan jatuh di lantai (benda tidak melayang), tokoh duduk tepat di jok (`naik`), tidak ada benda tembus satu sama lain (lihat juga di lembar kontak: tangan, kaki, benda di meja), subjek tidak terpotong tepi (9:16 sempit: lebar terlihat ±0,45 × jarak kamera).
 
 **5b. Warna dan topik (lihat `references/palet.md`, `references/dunia-topik.md`)**

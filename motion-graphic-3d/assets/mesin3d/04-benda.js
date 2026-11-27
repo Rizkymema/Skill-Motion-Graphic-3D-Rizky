@@ -87,12 +87,32 @@ Object.assign(DP, {
   ruang(o = {}) {
     const lb = o.lebar ?? 9, dl = o.dalam ?? 7, t = o.tinggi ?? 3.4, din = o.dinding || campur(P.latar, P.terang, .32), malam = this.keadaan === 'malam' || o.malam;
     this.scene.background = warna3(campur(din, P.gelap, .5)).clone();
+    this._tertutup = true;   // cek latar kosong (07-bidikan.js) berlaku di adegan ber-ruang
     return this.grup(Object.assign({}, o, { warna: undefined }), () => {
       this.tanah({ jenis: o.lantai || 'kayu', warna: o.warnaLantai, ukuran: Math.max(lb, dl) * 2.2 });
-      const dBel = this._b(geoKotak(lb, t, .2, .02), din, [0, t / 2, -dl / 2], { tepi: false });
-      if (o.motif === 'garis') { const cv = kanvasBaru(256, 256), c = cv.getContext('2d'); for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? din : campur(din, '#ffffff', .12); c.fillRect(i * 32, 0, 32, 256); } const tx = teksturKanvas(cv); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(lb / 2, 1); dBel.material = bahan({ warna: '#ffffff', peta: tx, unik: true }); }
-      this._b(geoKotak(lb, .16, .06, .01), campur(din, P.gelap, .45), [0, .08, -dl / 2 + .13], { tepi: false });
-      if (o.dindingSamping !== false) [-1, 1].forEach(s => this._b(geoKotak(.2, t, dl, .02), campur(din, P.gelap, .08), [s * lb / 2, t / 2, 0], { tepi: false }));
+      /* Dinding "rumah boneka" (sejak 27 Nov 2026, uji Timbangan Daging: bidikan otomatis menghadap sisi ruang yang terbuka → latar ungu kosong):
+         4 dinding + plafon = bidang yang hanya terlihat dari DALAM (FrontSide menghadap ke dalam). Kamera di luar dinding mana pun tetap melihat isi
+         ruang (dinding di depannya tak tergambar) dan di belakang tokoh selalu ada dinding/plafon. Tabrakan memakai kotak tak terlihat
+         (dindingRuang: tokoh/benda tetap tidak boleh menembus, tetapi kamera boleh berada di baliknya). tutup: false = hanya belakang + samping (lama). */
+      const tutup = o.tutup !== false, petaDinding = (w, h) => {
+        if (o.motif === 'bata') { const tx = teksturPola('bata', din).clone(); tx.needsUpdate = true; tx.repeat.set(w / .9, h / .9); return bahan({ warna: '#ffffff', peta: tx, unik: true, kasar: .95 }); }
+        if (o.motif === 'garis') { const cv = kanvasBaru(256, 256), c = cv.getContext('2d'); for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? din : campur(din, '#ffffff', .12); c.fillRect(i * 32, 0, 32, 256); } const tx = teksturKanvas(cv); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(w / 2, 1); return bahan({ warna: '#ffffff', peta: tx, unik: true }); }
+        return null;
+      };
+      const dinding = (w, pos, rotY, wr, bayang = true) => {
+        const mat = petaDinding(w, t), m = this._b(geoBidang(w, t), wr, pos, Object.assign({ r: [0, rotY, 0], tepi: false, latar: true }, mat ? { bahan: mat } : {}));
+        m.castShadow = bayang; m.userData.dindingVisual = true;
+        const plint = this._b(geoBidang(w, .16), campur(din, P.gelap, .45), [0, 0, 0], { tepi: false, latar: true }); plint.castShadow = false;
+        plint.position.set(pos[0], .08, pos[2]); plint.rotation.set(0, rotY, 0); plint.translateZ(.012);
+        return m;
+      };
+      const kotakTabrak = (w, d, pos) => { const m = this._b(geoKotak(w, t, d, .01), din, pos, { tepi: false }); m.visible = false; m.castShadow = false; m.userData.dindingRuang = true; return m; };
+      dinding(lb, [0, t / 2, -dl / 2], 0, din); kotakTabrak(lb, .2, [0, t / 2, -dl / 2 - .1]);
+      if (o.dindingSamping !== false) [-1, 1].forEach(s => { dinding(dl, [s * lb / 2, t / 2, 0], -s * Math.PI / 2, campur(din, P.gelap, .08)); kotakTabrak(.2, dl, [s * (lb / 2 + .1), t / 2, 0]); });
+      if (tutup) {
+        dinding(lb, [0, t / 2, dl / 2], Math.PI, campur(din, P.gelap, .04), false); kotakTabrak(lb, .2, [0, t / 2, dl / 2 + .1]);
+        const pl = this._b(geoBidang(lb, dl), o.warnaPlafon || campur(din, P.gelap, .3), [0, t, 0], { r: [Math.PI / 2, 0, 0], tepi: false, latar: true }); pl.castShadow = false; pl.userData.dindingVisual = true;
+      }
       if (o.jendela !== false) {
         const [jx, jy, jw, jh] = Array.isArray(o.jendela) ? o.jendela : [lb * .22, t * .58, 1.8, 1.5];
         this._b(geoKotak(jw + .16, jh + .16, .12, .03), o.warnaBingkai || '#F4EFE6', [jx, jy, -dl / 2 + .12]);
@@ -293,6 +313,136 @@ Object.assign(DP, {
   buku(o = {}) { const wr = o.warna || P.kedua; return this.grup(o, () => { this._b(geoKotak(.22, .04, .3, .006), wr, [0, .02, 0]); this._b(geoKotak(.205, .032, .29, .003), '#FBF6E9', [.006, .02, 0], { tepi: false }); }); }
 });
 
+/* ------------------------------------------------------------- benda cerita tambahan (sejak 26 Nov 2026, dari uji "Timbangan Daging") */
+/** tekstur butir nasi/beras (dibuat sekali): butir lonjong putih susu bertepi bayang tipis */
+function teksturNasi(wr = '#F7F5EE') {
+  const kunci = 'nasi|' + wr; let tx = M3.tekstur.get(kunci); if (tx) return tx;
+  const S = 512, cv = kanvasBaru(S, S), c = cv.getContext('2d'); c.fillStyle = campur(wr, '#D9D2C0', .3); c.fillRect(0, 0, S, S);
+  for (let i = 0; i < 900; i++) {
+    const x = acak(i * 3 + 1) * S, y = acak(i * 7 + 2) * S, a = acak(i * 11 + 3) * Math.PI, w = 13 + acak(i * 5) * 5, h = 5.5 + acak(i * 13) * 2;
+    for (const [dx, dy] of [[0, 0], [S, 0], [-S, 0], [0, S], [0, -S]]) {
+      if (x + dx < -20 || x + dx > S + 20 || y + dy < -20 || y + dy > S + 20) continue;
+      c.save(); c.translate(x + dx, y + dy); c.rotate(a);
+      c.fillStyle = campur(wr, '#A89C82', .45); c.beginPath(); c.ellipse(1.2, 1.8, w, h, 0, 0, 7); c.fill();   // bayang butir
+      c.fillStyle = campur(wr, '#FFFFFF', acak(i) * .6); c.beginPath(); c.ellipse(0, 0, w, h, 0, 0, 7); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.ellipse(-w * .25, -h * .3, w * .45, h * .3, 0, 0, 7); c.fill();   // kilap
+      c.restore();
+    }
+  }
+  tx = teksturKanvas(cv); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.userData.bersama = true; M3.tekstur.set(kunci, tx); return tx;
+}
+Object.assign(DP, {
+  /** nasi/beras: gundukan berbutir (bukan bola-bola adonan). ukuran (jari-jari m), tinggi, piring (true | warna | false), warna, beras: true (butir lebih kecil, kekuningan) */
+  nasi(o = {}) {
+    const r = o.ukuran ?? .24, t = o.tinggi ?? r * .78, wr = o.warna || (o.beras ? '#EDE3C8' : '#F7F5EE');
+    return this.grup(o, () => {
+      let y0 = 0;
+      if (o.piring !== false) { const wp = typeof o.piring === 'string' ? o.piring : '#F4F2EC'; this._b(geoSilinder(r * 1.5, r * 1.15, .035, 44), wp, [0, .0175, 0]); this._b(geoSilinder(r * 1.22, r * 1.22, .004, 44), campur(wp, '#000000', .07), [0, .037, 0], { tepi: false }); y0 = .036; }
+      const prof = [new THREE.Vector2(0, 0)]; for (let i = 0; i <= 16; i++) { const a = i / 16 * Math.PI / 2; prof.push(new THREE.Vector2(Math.max(.001, Math.cos(a) * r), Math.sin(a) ** .75 * t)); }
+      const g = new THREE.LatheGeometry(prof, segQ(40));
+      const tx = teksturNasi(wr).clone(); tx.needsUpdate = true; const ul = o.beras ? 4 : 2; tx.repeat.set(ul * 2, ul);
+      const mat = bahan({ warna: '#ffffff', peta: tx, unik: true, kasar: .55 }); mat.bumpMap = tx; mat.bumpScale = .0015;
+      this._b(g, wr, [0, y0, 0], { bahan: mat, tepi: campur(wr, '#8A7A60', .55) });
+      // butir 3D sungguhan di permukaan (InstancedMesh; tidak ikut cek tembus): siluet bergerigi + kilap per butir, bukan kubah licin/roti
+      const nB = o.butir ?? Math.round((o.beras ? 1400 : 900) * (r / .24) ** 2), pj = o.beras ? .0055 : .0078, gb = geoKapsul(pj * .42, pj, 6);
+      const im = new THREE.InstancedMesh(gb, bahan({ warna: campur(wr, '#ffffff', .35), kasar: .38, env: .5 }), nB); im.castShadow = false; im.receiveShadow = true;
+      const mt = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(1, 1, 1);
+      for (let i = 0; i < nB; i++) {
+        const a = acak(i * 3 + 5) * Math.PI * 2, th = Math.acos(1 - acak(i * 7 + 1)) * .98, x = Math.cos(th) * r, y = Math.sin(th) ** .75 * t;
+        e.set(acak(i * 11) * 6.3, acak(i * 13) * 6.3, acak(i * 17) * 6.3); q.setFromEuler(e); sc.setScalar(.8 + acak(i * 19) * .45);
+        mt.compose(new THREE.Vector3(Math.cos(a) * x * 1.005, y0 + y + .002, Math.sin(a) * x * 1.005), q, sc); im.setMatrixAt(i, mt);
+      }
+      im.instanceMatrix.needsUpdate = true; this._induk().add(im);
+    });
+  },
+  /** karung goni: lebar, tinggi, warna, tulisan ('BERAS\nSUPER' | false), warnaTulisan, isi (0,5–1 kegembungan), ikat (bool) */
+  karung(o = {}) {
+    const lb = o.lebar ?? .58, t = o.tinggi ?? .82, wr = o.warna || '#CDB385', isi = o.isi ?? 1, tex = teksturMotif('goni', wr);
+    const gk = this.grup(o, () => {
+      const prof = [[0, 0], [lb * .44, 0], [lb * .52, t * .08], [lb * .55 * isi, t * .35], [lb * .54 * isi, t * .62], [lb * .48, t * .8], [lb * .3, t * .88], [lb * .1, t * .9], [0, t * .9]].map(([x, y]) => new THREE.Vector2(x, y));
+      const g = geoSimpan(`karung|${lb}|${t}|${isi}`, () => new THREE.LatheGeometry(prof, segQ(26)));
+      const m = this._b(g, wr, [0, 0, 0], { s: [1, 1, .72], warna: '#ffffff', peta: tex, unik: true, tepi: campur(wr, P.gelap, .75) });
+      if (o.ikat !== false) { this._b(geoTorus(lb * .11, .016, 16), o.warnaIkat || '#8A5A2E', [0, t * .9, 0], { r: [Math.PI / 2, 0, 0], tepi: false }); const telinga = new THREE.LatheGeometry([[0, 0], [lb * .1, 0], [lb * .16, t * .06], [lb * .2, t * .1], [0, t * .08]].map(([x, y]) => new THREE.Vector2(x, y)), 12); this._b(telinga, wr, [0, t * .9, 0], { warna: '#ffffff', peta: tex, unik: true, ganda: true, tepi: campur(wr, P.gelap, .75) }); }
+      if (o.tulisan !== false) { const tt = teksturTeks(o.tulisan || 'BERAS', { px: 120, berat: 900, warna: o.warnaTulisan || '#B83E2B' }), lw = lb * .78, lh = lw * tt.h / tt.w;
+        const lab = new THREE.Mesh(geoBidang(lw, lh), new THREE.MeshStandardMaterial({ map: tt.tex, transparent: true, roughness: .9, depthWrite: false, envMapIntensity: .2 })); lab.position.set(0, t * .48, lb * .55 * isi * .72 + .014); this._induk().add(lab); }
+    });
+    gk.userData.lunak = true; return gk;   // karung lunak: boleh saling menekan saat ditumpuk
+  },
+  /** timbangan: jenis 'dacin' (tiang + palang + piring + bandul; nama + 'Palang' untuk digoyang) | 'digital' (alas + layar angka) | 'duduk' (timbangan badan berjarum);
+      angka: teks layar atau fungsi t → teks; warna */
+  timbangan(o = {}) {
+    const jenis = o.jenis || 'digital', karat = o.warna || '#7A4A2A', a = this.a;
+    if (jenis === 'dacin') return this.grup(o, () => {
+      this._b(geoSilinder(.05, .07, 2.4, 14), '#4E3624', [0, 1.2, 0]); this._b(geoKotak(.5, .08, .1, .02), '#4E3624', [0, 2.36, 0]);
+      const palang = new THREE.Group(); palang.position.set(0, 2.05, .12); this._induk().add(palang); this._grup.push(palang);
+      try {
+        this._b(geoSilinder(.024, .024, 1.3, 10), karat, [-.15, 0, 0], { r: [0, 0, Math.PI / 2], logam: .6, kasar: .45 });
+        for (let i = 0; i < 7; i++) this._b(geoKotak(.006, .05, .03, 0), '#D8B060', [.05 + i * .07, 0, 0], { tepi: false, padat: false });
+        this._b(geoSilinder(.006, .006, .7, 6), '#3A3A3A', [-.65, -.36, 0], { tepi: false, padat: false });
+        this._b(geoSilinder(.22, .15, .05, 24), karat, [-.65, -.73, 0], { logam: .5 });
+        this._b(geoBola(.09, 16, 12), '#2E2219', [.42, -.1, 0], { logam: .5 });
+      } finally { this._grup.pop(); }
+      if (o.nama) this.nama[o.nama + 'Palang'] = palang;
+      if (o.ayun) { const bn = palang.id; this.upd.push((t, T) => { palang.rotation.z = Math.sin(T * (o.ayun.laju ?? 2.2) + bn) * (o.ayun.kuat ?? .05); }); }
+    });
+    if (jenis === 'duduk') return this.grup(o, () => {
+      this._b(geoKotak(.36, .07, .42, .03), o.warna || '#D8DCE2', [0, .035, 0]); this._b(geoBidang(.16, .16), '#ffffff', [0, .072, .12], { r: [-Math.PI / 2, 0, 0], tepi: false });
+      const jarum = this._b(geoKotak(.006, .006, .06, 0), '#D8342E', [0, .075, .12], { tepi: false, padat: false });
+      this.upd.push(t => { jarum.rotation.y = typeof o.angka === 'function' ? o.angka(t) : 0; });
+    });
+    return this.grup(o, () => {   // digital
+      this._b(geoKotak(.62, .14, .48, .03), o.warna || '#5A6A7A', [0, .07, 0]); this._b(geoKotak(.54, .03, .42, .02), '#A9B4C2', [0, .155, 0], { logam: .4, kasar: .35 });
+      this._b(geoKotak(.3, .14, .05, .02), '#22262E', [0, .2, .27], { r: [-.3, 0, 0] });
+      this._layar(.26, .1, { warnaLayar: '#100404', layar: (g2, w, h, t) => { g2.latar('polos', { warna: '#100404' }); const s = typeof o.angka === 'function' ? o.angka(t) : (o.angka ?? '0.00 KG'); g2.teks(String(s), w / 2, h / 2, { ukuran: h * .5, warna: '#FF3A2A', font: 'mono', cek: false }); } }, [0, .2, .3], 384).rotation.x = -.3;
+    });
+  },
+  /** pintu: jenis 'kayu' (daun berengsel) | 'rolling' (rolling door turun-naik) | 'besi'; lebar, tinggi, warna, buka (0 tutup .. 1 buka; angka atau [[t, nilai], …]) */
+  pintu(o = {}) {
+    const lb = o.lebar ?? (o.jenis === 'rolling' ? 2.2 : 1), t = o.tinggi ?? (o.jenis === 'rolling' ? 2.6 : 2.1), wr = o.warna || (o.jenis === 'rolling' ? '#8E959E' : '#8A5A36'), a = this.a;
+    const nilaiBuka = tt => Array.isArray(o.buka) ? kunci3(tt, o.buka, a) : (o.buka ?? 0);
+    return this.grup(o, () => {
+      this._b(geoKotak(lb + .16, .12, .2, .02), campur(wr, P.gelap, .35), [0, t + .06, 0]); [-1, 1].forEach(s => this._b(geoKotak(.08, t, .2, .02), campur(wr, P.gelap, .35), [s * (lb / 2 + .04), t / 2, 0]));
+      if (o.jenis === 'rolling') {
+        const daun = new THREE.Group(); this._induk().add(daun); this._grup.push(daun);
+        try { const m = this._b(geoKotak(lb, t, .04, .005), wr, [0, t / 2, 0], { logam: .45, kasar: .5 }); const cv = kanvasBaru(64, 256), c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, 64, 256); for (let i = 0; i < 256; i += 16) { c.fillStyle = '#9aa0a8'; c.fillRect(0, i, 64, 4); } const tx = teksturKanvas(cv); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(1, t / 1.2); m.material = bahan({ warna: wr, peta: tx, unik: true, logam: .45, kasar: .5 }); } finally { this._grup.pop(); }
+        this._b(geoSilinder(.14, .14, lb + .1, 18), campur(wr, P.gelap, .2), [0, t + .02, .05], { r: [0, 0, Math.PI / 2] });
+        this.upd.push(tt => { const b = jepit(nilaiBuka(tt)); daun.scale.y = Math.max(.02, 1 - b); daun.position.y = t * b; });
+      } else {
+        const engsel = new THREE.Group(); engsel.position.set(-lb / 2, 0, 0); this._induk().add(engsel); this._grup.push(engsel);
+        try { this._b(geoKotak(lb, t, .06, .02), wr, [lb / 2, t / 2, 0], o.jenis === 'besi' ? { logam: .5, kasar: .4 } : {}); this._b(geoBola(.035, 10, 8), '#D8B060', [lb * .88, t * .48, .05], { logam: .7, tepi: false }); } finally { this._grup.pop(); }
+        this.upd.push(tt => { engsel.rotation.y = -jepit(nilaiBuka(tt)) * 1.7; });
+      }
+    });
+  },
+  jeriken(o = {}) { const wr = o.warna || '#EEF2F4'; return this.grup(o, () => { this._b(geoKotak(.3, .42, .18, .05), wr, [0, .21, 0]); this._b(geoKotak(.1, .06, .05, .02), wr, [-.05, .45, 0]); this._b(geoSilinder(.035, .035, .06, 12), o.warnaTutup || '#2C6CC8', [.09, .45, 0]); if (o.tulisan) this.teks(o.tulisan, { posisi: [0, .22, .095], ukuran: .045, warna: o.warnaTulisan || '#2C6CC8', tebal: .005, lapis: 2 }); }); },
+  ember(o = {}) { const wr = o.warna || P.kedua; return this.grup(o, () => { this._b(new THREE.CylinderGeometry(.17, .13, .26, 24, 1, true), wr, [0, .13, 0], { ganda: true }); this._b(geoSilinder(.13, .13, .01, 24), campur(wr, P.gelap, .3), [0, .005, 0], { tepi: false }); this._b(new THREE.TorusGeometry(.17, .012, 8, 24, Math.PI), '#9EA3AE', [0, .26, 0], { r: [0, 0, 0], logam: .6, tepi: false }); }); },
+  drum(o = {}) { const wr = o.warna || '#2F6FB0'; return this.grup(o, () => { this._b(geoSilinder(.3, .3, .88, 28), wr, [0, .44, 0], { logam: .3, kasar: .5 }); [.2, .68].forEach(y => this._b(geoTorus(.3, .02, 28), campur(wr, P.gelap, .3), [0, y, 0], { r: [Math.PI / 2, 0, 0], tepi: false })); }); },
+  gentong(o = {}) { const wr = o.warna || '#A65A34'; return this.grup(o, () => { const prof = [[0, 0], [.18, 0], [.3, .18], [.34, .4], [.28, .62], [.2, .7], [.22, .74], [0, .74]].map(([x, y]) => new THREE.Vector2(x, y)); this._b(geoSimpan('gentong', () => new THREE.LatheGeometry(prof, segQ(26))), wr, [0, 0, 0], { kasar: .85 }); }); },
+  peti(o = {}) { const [w, h, dl] = o.ukuran || [.7, .5, .5], wr = o.warna || '#A87A48'; return this.grup(o, () => { this._b(geoKotak(w, h, dl, .015), wr, [0, h / 2, 0], { warna: '#ffffff', peta: teksturPola('kayu', wr), unik: true, tepi: campur(wr, P.gelap, .78) }); [-1, 1].forEach(s => this._b(geoKotak(w * 1.01, .05, .02, .005), campur(wr, P.gelap, .4), [0, h * (.5 + s * .3), dl / 2 + .005], { tepi: false })); }); },
+  /** lampu gantung bohlam: tinggi kabel, warna, kuat, ayun (bool | {kuat, laju}), kedip, bayang */
+  lampuGantung(o = {}) {
+    const kab = o.kabel ?? .8, wr = o.warna || '#FFC870', a = this.a;
+    const g = this.grup(Object.assign({}, o, { ayun: undefined }), () => {
+      const ay = new THREE.Group(); this._induk().add(ay); this._grup.push(ay);
+      try { this._b(geoSilinder(.006, .006, kab, 6), '#222', [0, -kab / 2, 0], { tepi: false, padat: false }); this._b(geoSilinder(.03, .03, .06, 10), '#333', [0, -kab - .02, 0], { tepi: false, padat: false });
+        this.lampu({ posisi: [0, -kab - .1, 0], warna: wr, kuat: o.kuat ?? 1.8, jarak: o.jarak ?? 8, ukuran: .06, pendar: o.pendar ?? 1.2, bayang: o.bayang !== false, kedip: o.kedip }); } finally { this._grup.pop(); }
+      if (o.ayun) { const y = o.ayun === true ? {} : o.ayun; this.upd.push((t, T) => { ay.rotation.z = Math.sin(T * (y.laju ?? 1.6)) * (y.kuat ?? .12); ay.rotation.x = Math.sin(T * (y.laju ?? 1.6) * .7 + 1) * (y.kuat ?? .12) * .5; }); }
+    });
+    return g;
+  },
+  /** rak barang toko/gudang: lebar, tinggi, susun (jumlah papan), isi: 'kardus' | 'toples' | 'karung' */
+  rakBarang(o = {}) {
+    const lb = o.lebar ?? 1.6, t = o.tinggi ?? 1.9, n = o.susun ?? 4, wr = o.warna || '#7E8A96';
+    return this.grup(o, () => {
+      [-1, 1].forEach(s => [-1, 1].forEach(z => this._b(geoKotak(.04, t, .04, .005), wr, [s * lb / 2, t / 2, z * .2], { logam: .4 })));
+      for (let i = 0; i < n; i++) { const y = .1 + i * (t - .15) / (n - 1); this._b(geoKotak(lb, .03, .44, .005), wr, [0, y, 0], { logam: .3 });
+        if (i < n - 1) for (let k = 0; k < 4; k++) { const x = -lb / 2 + .22 + k * (lb - .44) / 3, w = .24 + acak(i * 5 + k) * .1, h = .18 + acak(i * 3 + k) * .14;
+          if ((o.isi || 'kardus') === 'toples') this._b(geoSilinder(.07, .07, h, 16), [P.aksen, P.kedua, '#E8E0C8'][(i + k) % 3], [x, y + .015 + h / 2, 0], { tembus: .85 });
+          else this._b(geoKotak(w, h, .3, .01), ['#C8955A', '#B8844C', '#D8A868'][(i + k) % 3], [x, y + .015 + h / 2, 0]); } }
+    });
+  }
+});
+
 /** jarak tempuh kendaraan sejak posisi awalnya, searah hadapnya (+z lokal) → putaran roda tanpa selip */
 function jarakTempuh(g) {
   const u = g.userData; if (!u._awal) { u._awal = g.position.clone(); return 0; }
@@ -330,6 +480,14 @@ function bendaPegang(jenis, dn, tk) {
     case 'pensil': case 'stylus': case 'kuas': b(geoKapsul(.01, .16, 6), jenis === 'pensil' ? '#F2B134' : '#2B2F3A', [0, -.05, .03], { r: [.5, 0, 0] }); break;
     case 'mik': case 'mikrofon': b(geoSilinder(.02, .015, .16, 12), '#2B2F3A', [0, -.02, .04], { r: [-.3, 0, 0] }); b(geoBola(.035, 14, 10), '#8E939E', [0, .07, .07]); break;
     case 'tas': b(geoKotak(.32, .26, .12, .04), P.kedua, [0, -.2, 0]); b(geoTorus(.08, .012, 10), '#3A3A44', [0, -.05, 0], { r: [0, Math.PI / 2, 0] }); break;
+    case 'jeriken': b(geoKotak(.22, .3, .13, .04), '#EEF2F4', [0, -.16, .04]); b(geoSilinder(.025, .025, .04, 10), '#2C6CC8', [.07, .01, .04], { tepi: false }); break;
+    case 'sekop': b(geoKapsul(.016, .7, 8), '#6A5038', [0, -.25, .03]); b(geoKotak(.2, .26, .02, .01), '#8E939E', [0, -.68, .06], { r: [.25, 0, 0], logam: .6 }); break;
+    case 'sapu': b(geoKapsul(.014, .9, 8), '#8A6A3A', [0, -.3, .03]); b(geoKerucut(.12, .3, 14), '#D8B060', [0, -.82, .03], { r: [Math.PI, 0, 0] }); break;
+    case 'ember': b(new THREE.CylinderGeometry(.13, .1, .2, 20, 1, true), P.kedua, [0, -.2, .02], { ganda: true }); b(new THREE.TorusGeometry(.13, .008, 6, 20, Math.PI), '#9EA3AE', [0, -.08, .02], { tepi: false }); break;
+    case 'karung': b(geoKotak(.3, .4, .2, .1), '#CDB385', [0, -.24, .08]); break;
+    case 'piring': b(geoSilinder(.14, .1, .025, 24), '#F4F2EC', [0, -.05, .12], { r: [.2, 0, 0] }); break;
+    case 'tongkat': b(geoKapsul(.018, 1.0, 8), '#6A4A2E', [0, -.4, .03]); break;
+    case 'lentera': { b(geoKotak(.12, .16, .12, .02), '#2B2F3A', [0, -.14, .03], { logam: .5 }); const l = new THREE.PointLight(warna3('#FFC060').clone(), 1.2, 4, 1.5); l.position.set(0, -.14, .03); g.add(l); b(geoBola(.035, 10, 8), '#FFE2A0', [0, -.14, .03], { dasar: true }); break; }
     case 'kunci': b(geoTorus(.025, .007, 10), '#C9A23A', [0, -.03, .03], { logam: .7 }); b(geoKotak(.012, .06, .006, 0), '#C9A23A', [0, -.07, .03], { logam: .7 }); break;
     default: return null;
   }

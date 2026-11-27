@@ -5,10 +5,11 @@ dalam HTML, jadi pengguna cukup membukanya di Chrome/Edge lalu menekan "Ekspor M
 merakit file itu (menanam Three.js r147 + mesin 3D assets/mesin3d/*.js) dan "menekan tombolnya" di browser tanpa layar (Playwright), supaya Claude bisa melihat
 bingkai sendiri dan mengunggah otomatis. Tidak memakai ffmpeg.
 
-  rakit     <konfig.js> <keluar.html> [--narasi narasi.mp3 --naskah naskah.txt] [--baris DIR] [--musik musik.mp3 --vol-musik 0.3] [--sfx DIR]
+  rakit     <konfig.js> <keluar.html> [--narasi narasi.mp3 --naskah naskah.txt] [--baris DIR] [--musik musik.mp3 --vol-musik 0.3 --redam-musik 0.3] [--sfx DIR]
   cek       <film.html>                      cek kualitas (JSON), kode keluar 0 = BERES
   kontak    <film.html> <keluar.jpg> [--n 24 | --t 1,2.5,4]
   bingkai   <film.html> <detik> <keluar.png>
+  lembar    <film.html> <folder> [--langkah 1] [--mulai 0 --akhir 30]   lembar kontak PER DETIK (8×3 bingkai berlabel waktu) untuk diperiksa mata
   thumbnail <film.html> <keluar.png>
   ekspor    <film.html> <keluar.mp4> [--fps 30]
 
@@ -24,7 +25,7 @@ from pathlib import Path
 AKAR = Path(__file__).resolve().parent.parent
 TEMPLAT = AKAR / 'assets' / 'templat.html'
 THREE = AKAR / 'assets' / 'three.min.js'          # Three.js r147 (MIT), ditanam utuh
-MESIN3D = AKAR / 'assets' / 'mesin3d'              # 01-inti.js … 06-tabrak.js, digabung urut nama
+MESIN3D = AKAR / 'assets' / 'mesin3d'              # 01-inti.js … 07-bidikan.js, digabung urut nama
 
 
 def data_uri(berkas):
@@ -71,7 +72,8 @@ def rakit(a):
                     b['src'] = data_uri(cocok[0])
     if a.musik:
         suara = suara or {}
-        suara['musik'] = {'src': data_uri(a.musik), 'vol': a.vol_musik}
+        suara['musik'] = {'src': data_uri(a.musik), 'vol': a.vol_musik, 'redam': a.redam_musik}
+        if a.musik_utuh: suara['musik']['ulang'] = False   # musik latar sepanjang video (musik_epidemic.py latar): tidak di-loop
     if a.sfx:   # semua berkas audio di DIR ditanam sebagai SFX berkas (nama = nama berkas tanpa ekstensi)
         suara = suara or {}
         suara['sfxBerkas'] = {f.stem: data_uri(f) for f in sorted(Path(a.sfx).iterdir()) if f.suffix.lower() in ('.mp3', '.wav', '.ogg', '.m4a')}
@@ -161,6 +163,31 @@ def bingkai(a):
     tutup(pw, br, log)
 
 
+def lembar(a):
+    """Bingkai tiap `langkah` dtk (setengah resolusi, tanpa ekspor) disusun 8×3 per lembar berlabel waktu. Wajib dilihat SEMUA sebelum ekspor:
+    cek otomatis menangkap tembus/wajah/latar kosong/teks, tetapi pose janggal, komposisi, dan benda yang tidak terbaca hanya terlihat mata."""
+    from PIL import Image, ImageDraw, ImageFont
+    out = Path(a.folder); out.mkdir(parents=True, exist_ok=True)
+    pw, br, pg, log = buka(a.html)
+    dur = pg.evaluate('DURASI'); akhir = min(a.akhir or dur, dur - .05); pg.evaluate('aturSkala(.5)')
+    gb, t = [], a.mulai
+    while t <= akhir + 1e-6:
+        d = pg.evaluate("t => { seek(t); return KANVAS.toDataURL('image/jpeg', .85) }", t)
+        im = Image.open(io.BytesIO(base64.b64decode(d.split(',')[1]))).convert('RGB'); lb = 240 if im.height > im.width else 400
+        gb.append((t, im.resize((lb, round(im.height * lb / im.width))))); t = round(t + a.langkah, 4)
+    tutup(pw, br, log)
+    try: fn = ImageFont.truetype('arialbd.ttf', 20)
+    except OSError: fn = ImageFont.load_default()
+    kol = 8 if gb[0][1].height > gb[0][1].width else 5; bar = 3; per = kol * bar; hasil = []
+    for n in range(0, len(gb), per):
+        grp = gb[n:n + per]; w, h = grp[0][1].size
+        L = Image.new('RGB', (kol * w + (kol - 1) * 4, bar * h + (bar - 1) * 4), (0, 0, 0)); dr = ImageDraw.Draw(L)
+        for i, (tt, im) in enumerate(grp):
+            x, y = (i % kol) * (w + 4), (i // kol) * (h + 4); L.paste(im, (x, y)); dr.rectangle([x, y, x + 62, y + 24], fill=(0, 0, 0)); dr.text((x + 4, y + 2), f'{tt:.1f}', fill=(124, 255, 124), font=fn)
+        f = out / f'lembar_{n // per + 1:02d}.jpg'; L.save(f, quality=85); hasil.append(str(f))
+    print('ok', len(gb), 'bingkai,', len(hasil), 'lembar:'); [print(' ', f) for f in hasil]
+
+
 def thumbnail(a):
     pw, br, pg, log = buka(a.html)
     d = pg.evaluate('thumbnail()')
@@ -175,12 +202,12 @@ def thumbnail(a):
 def ekspor(a):
     pw, br, pg, log = buka(a.html)
     t0 = time.time()
-    tipe, isi = pg.evaluate("""async fps => {
-      const blob = await eksporMP4({ fps: fps || undefined });
+    tipe, isi = pg.evaluate("""async ([fps, batas]) => {
+      const blob = await eksporMP4({ fps: fps || undefined, batasMB: batas || undefined });
       const buf = new Uint8Array(await blob.arrayBuffer()); let s = '';
       for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
       return [blob.type, btoa(s)];
-    }""", a.fps)
+    }""", [a.fps, a.batas_mb])
     keluar = Path(a.keluar)
     if 'webm' in tipe:
         keluar = keluar.with_suffix('.webm')
@@ -194,12 +221,15 @@ def main():
     sub = ap.add_subparsers(dest='perintah', required=True)
     p = sub.add_parser('rakit'); p.add_argument('konfig'); p.add_argument('keluar')
     p.add_argument('--naskah'); p.add_argument('--narasi'); p.add_argument('--baris'); p.add_argument('--mulai', type=float, default=0.3)
-    p.add_argument('--musik'); p.add_argument('--vol-musik', type=float, default=0.3); p.add_argument('--sfx'); p.set_defaults(f=rakit)
+    p.add_argument('--musik'); p.add_argument('--vol-musik', type=float, default=0.3); p.add_argument('--redam-musik', type=float, default=0.3, help='musik saat dialog = vol × redam (disesuaikan per kalimat)')
+    p.add_argument('--musik-utuh', action='store_true', help='musik sepanjang video, jangan di-loop'); p.add_argument('--sfx'); p.set_defaults(f=rakit)
     p = sub.add_parser('cek'); p.add_argument('html'); p.set_defaults(f=cek)
     p = sub.add_parser('kontak'); p.add_argument('html'); p.add_argument('keluar'); p.add_argument('--n', type=int, default=24); p.add_argument('--t'); p.set_defaults(f=kontak)
     p = sub.add_parser('bingkai'); p.add_argument('html'); p.add_argument('detik'); p.add_argument('keluar'); p.set_defaults(f=bingkai)
+    p = sub.add_parser('lembar'); p.add_argument('html'); p.add_argument('folder'); p.add_argument('--langkah', type=float, default=1); p.add_argument('--mulai', type=float, default=0); p.add_argument('--akhir', type=float, default=0); p.set_defaults(f=lembar)
     p = sub.add_parser('thumbnail'); p.add_argument('html'); p.add_argument('keluar'); p.set_defaults(f=thumbnail)
-    p = sub.add_parser('ekspor'); p.add_argument('html'); p.add_argument('keluar'); p.add_argument('--fps', type=int, default=0); p.set_defaults(f=ekspor)
+    p = sub.add_parser('ekspor'); p.add_argument('html'); p.add_argument('keluar'); p.add_argument('--fps', type=int, default=0)
+    p.add_argument('--batas-mb', type=float, default=0, help='batasi ukuran MP4 (mis. 46 untuk unggah lewat Balasin); bawaan tanpa batas'); p.set_defaults(f=ekspor)
     a = ap.parse_args()
     a.f(a)
 
