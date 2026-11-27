@@ -98,7 +98,7 @@ const ADEGAN = [
 
   /* 5. Penutup: celengan + Dina hore + konfeti, ajakan */
   { id: 'penutup', durasi: 4.6, masuk: 'kilat', suasana: 'senja', luas: 5,
-    kamera: [[0, { dari: [0, 1.4, 4.2], ke: [0, 1.0, 0], fov: 42 }], [4.6, { dari: [.6, 1.3, 3.5], ke: [0, 1.05, 0] }, 'inOutSine']],
+    kamera: [[0, { dari: [0, 1.5, 4.2], ke: [0, 1.14, 0], fov: 42 }], [4.6, { dari: [.6, 1.4, 3.5], ke: [0, 1.18, 0] }, 'inOutSine']],   // sasaran sedikit naik (27 Nov 2026): Dina yang melompat tidak menyentuh teks atas
     sfx: [{ t: .05, jenis: 'impact' }, { t: .5, jenis: 'koin' }, { t: 1.2, jenis: 'ding' }, { t: 2.4, jenis: 'pop' }],
     dunia(d) {
       d.studio();
@@ -109,7 +109,7 @@ const ADEGAN = [
       d.partikel('konfeti', { dari: [0, 1.6, 0], mulai: 1.2, n: 150, kuat: 4.5 });
     },
     gambar(g, t) {
-      g.teksMasuk('SISIHKAN *15RB/HARI*', 540, 280, t, { mulai: .3, ukuran: 80, gaya: 'pop', aksen: P.aksen, garis: P.gelap, tebalGaris: 11, maks: 940 });
+      g.teksMasuk('SISIHKAN *15RB/HARI*', 540, 270, t, { mulai: .3, ukuran: 72, gaya: 'pop', aksen: P.aksen, garis: P.gelap, tebalGaris: 11, maks: 940 });
       if (t > 2.4) g.label('Follow untuk tips uang lainnya', CX, H * .62, { warna: P.kedua, ukuran: 40 });
     } }
 ];

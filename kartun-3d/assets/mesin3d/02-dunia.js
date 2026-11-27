@@ -240,10 +240,12 @@ function titikJalur(titik, k) {
 Dunia3D.prototype.selesaiBangun = function () {
   // pusat bayangan matahari = sasaran kamera awal (atau a.pusatBayang); lingkup = luas (m)
   const a = this.a;
+  this.simpanDasar();          // keadaan dasar sendi tokoh (dipulihkan tiap bingkai → deterministik)
   this.perbarui(0, a.mulai);   // keadaan t = 0 (anim, tokoh) sebelum kamera awal dihitung → kamera ikuti + hadap bawaan deterministik
   daftarPadat(this);           // anti-tembus: benda padat + permukaan pijak (06-tabrak.js)
   this.perbarui(0, a.mulai);   // sekali lagi dengan daftar padat (kaki menapak, lengan tidak menembus)
   aturKamera3D(this, a, 0, a.mulai); this.kameraAwal = this.kamera.position.clone();
+  this._kamDasar = [this.kamera.position.clone(), this.kamera.quaternion.clone(), this.kamera.fov];   // kamera dasar tiap bingkai (sebelum dihitung ulang)
   this._pusatBayang = a.pusatBayang || (this._ke ? this._ke.slice() : [0, 1, 0]);
   const sm = this.matahari.shadow.camera, L = this.luas; sm.left = -L; sm.right = L; sm.top = L; sm.bottom = -L; sm.near = .5; sm.far = 80; sm.updateProjectionMatrix();
 };
@@ -255,7 +257,30 @@ Dunia3D.prototype.cahayaIkutKamera = function () {
   if (this.langitObj) this.langitObj.position.copy(this.kamera.position);
   const kp = this.kamera.position; this.cahayaIsi.position.set(kp.x, kp.y + 1.5, kp.z); this.cahayaIsi.target.position.set(c[0], 1, c[2]);
 };
+/* DETERMINISME (sejak 27 Nov 2026; uji: bingkai yang sama beda bila urutan seek beda, 0,1–2,7 % piksel di adegan dua tokoh).
+   Penyebab: tokoh A membaca tokoh B (hadap, lihat, anti-tembus lengan) yang belum diperbarui di bingkai ini → keadaan bingkai sebelumnya.
+   Sekarang tiap bingkai: (1) semua sendi tokoh + kamera dikembalikan ke keadaan dasar (sesudah dibangun), (2) tokoh diperbarui,
+   (3) bila ada rujukan antar-tokoh/kamera, diperbarui SEKALI LAGI memakai keadaan lintasan pertama. Hasil = fungsi murni dari t. */
+Dunia3D.prototype.simpanDasar = function () {
+  const st = []; for (const id in this.para) this.para[id].akar.traverse(o => st.push([o, o.position.clone(), o.quaternion.clone(), o.scale.clone(), o.visible]));
+  this._dasar = st; this._duaLintas = Object.keys(this.para).length > 1;
+  for (const id in this.para) { const o = this.para[id].o, adaKam = v => JSON.stringify(v ?? null).includes('"kamera"'); if (adaKam(o.lihat) || adaKam(o.hadap)) this._pakaiKamera = true; }
+  if (this._pakaiKamera) this._duaLintas = true;
+};
+Dunia3D.prototype.pulihkanDasar = function () {
+  if (!this._dasar) return;
+  for (const [o, p, q, s, v] of this._dasar) { o.position.copy(p); o.quaternion.copy(q); o.scale.copy(s); o.visible = v; }
+  if (this._kamDasar) { const c = this.kamera; c.position.copy(this._kamDasar[0]); c.quaternion.copy(this._kamDasar[1]); c.fov = this._kamDasar[2]; c.updateProjectionMatrix(); c.updateMatrixWorld(); }
+};
 Dunia3D.prototype.perbarui = function (t, T) {
+  this.pulihkanDasar();
+  this._perbaruiSekali(t, T);
+  if (this._duaLintas) {
+    if (this._pakaiKamera && this._kamDasar) { this._kamSementara = true; try { aturKamera3D(this, this.a, t, T); } finally { this._kamSementara = false; } }   // kamera dari keadaan lintasan 1 (untuk lihat/hadap 'kamera')
+    this._perbaruiSekali(t, T);
+  }
+};
+Dunia3D.prototype._perbaruiSekali = function (t, T) {
   this.t = t; this.T = T; this._cap = (this._cap || 0) + 1;
   for (const f of this.upd) { try { f(t, T); } catch (e) { if (!this._galat) { this._galat = 1; console.error(e); catatan.push('Galat animasi 3D di adegan ' + this.a.id + ': ' + e.message); } } }
   // gerak(d, t) adegan SEBELUM tokoh diperbarui: perubahan tokoh di gerak (skala, posisi) berlaku di bingkai yang sama (dulu terlambat 1 bingkai)

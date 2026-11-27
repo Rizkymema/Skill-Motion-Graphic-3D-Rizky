@@ -138,18 +138,25 @@ function bahan(o = {}) {
   if (!o.unik) M3.bahan.set(kunci, m);
   return m;
 }
-/* garis tepi kartun: kulit terbalik (BackSide) yang didorong sepanjang normal di RUANG LAYAR → tebal tetap ±3 px di 1080p
+/* garis tepi kartun (juga untuk SkinnedMesh: anggota tubuh lentur + badan ber-skin, sejak 27 Nov 2026): kulit terbalik (BackSide) yang didorong sepanjang normal di RUANG LAYAR → tebal tetap ±3 px di 1080p
    walau benda diskalakan atau jauh; warna = warna benda digelapkan ke P.gelap (bernuansa, bukan hitam polos) */
 function bahanTepi(wr) {
   const kunci = 'tepi|' + wr; let m = M3.bahan.get(kunci); if (m) return m;
   m = new THREE.ShaderMaterial({
     uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { warna: { value: warna3(wr).clone() }, tebal: { value: M3.tebalTepi }, res: { value: new THREE.Vector2(1080, 1920) } }]),
     vertexShader: `uniform float tebal; uniform vec2 res;
+      #include <common>
+      #include <skinning_pars_vertex>
       #include <fog_pars_vertex>
       void main() {
-        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        #include <skinbase_vertex>
+        #include <begin_vertex>
+        #include <beginnormal_vertex>
+        #include <skinnormal_vertex>
+        #include <skinning_vertex>
+        vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
         vec4 p = projectionMatrix * mvPosition;
-        vec3 n = normalize(normalMatrix * normal);
+        vec3 n = normalize(normalMatrix * objectNormal);
         vec2 d = (projectionMatrix * vec4(n, 0.0)).xy; float l = length(d); if (l > 1e-5) d /= l;
         p.xy += d * tebal * 2.0 / res * p.w; gl_Position = p;
         #include <fog_vertex>
@@ -265,13 +272,18 @@ function buang3(obj) {   // lepaskan geometri/bahan/tekstur milik dunia ini (yan
    setel ekspos ke target keadaan (C3.terang; terang .46, gelap .3). Adegan keruh/gosong tidak terjadi lagi. adegan.ekspos menimpa. */
 function ukurEksposur(dn) {
   const r = M3.r, a = dn.a; if (!r || a.ekspos !== undefined || K.eksposOtomatis === false) { if (a.ekspos !== undefined) dn.ekspos = a.ekspos; return; }
+  M3.eksposAdegan = M3.eksposAdegan || new Map();   // dunia yang dibangun ulang memakai ukuran pertama; render ukur tetap dijalankan (urutan unggah tekstur ke GPU sama → bingkai identik)
   aturKamera3D(dn, a, 0, a.mulai); dn.cahayaIkutKamera();
-  const w = 54, h = Math.round(54 * H / W); r.setSize(w, h, false); r.toneMappingExposure = dn.ekspos; r.shadowMap.needsUpdate = true; r.render(dn.scene, dn.kamera);
+  const w = 54, h = Math.round(54 * H / W); r.setSize(w, h, false); r.toneMappingExposure = dn.ekspos;
+  const simpanTepi = M3.tepi.map(m => [m.uniforms.tebal.value, m.uniforms.res.value.clone()]); M3.tepi.forEach(m => { m.uniforms.tebal.value = 0; m.uniforms.res.value.set(w, h); });   // garis tepi dimatikan saat mengukur: dulu tebal/res sisa bingkai sebelumnya ikut terukur → eksposur dunia yang dibangun ulang beda (determinisme)
+  r.setRenderTarget(null); r.shadowMap.needsUpdate = true; r.render(dn.scene, dn.kamera);   // selalu ke layar (bukan target HDR sisa pasca-proses)
   const gl = r.getContext(), px = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  M3.tepi.forEach((m, i) => { m.uniforms.tebal.value = simpanTepi[i][0]; m.uniforms.res.value.copy(simpanTepi[i][1]); });
   let jumlah = 0, n = 0;
   for (let y = Math.floor(h * .15); y < h * .8; y++) for (let x = Math.floor(w * .12); x < w * .88; x++) { const i = (y * w + x) * 4; jumlah += (px[i] * .2126 + px[i + 1] * .7152 + px[i + 2] * .0722) / 255; n++; }
   const rata = n ? jumlah / n : .4, target = dn.C3.terang ?? .46;
   if (rata > .01) dn.ekspos *= jepit(Math.pow(target / rata, .65), .78, 1.7);
+  dn.ekspos = Math.round(dn.ekspos * 50) / 50; if (M3.eksposAdegan.has(a.i)) dn.ekspos = M3.eksposAdegan.get(a.i); else M3.eksposAdegan.set(a.i, dn.ekspos);   // dibulatkan 0,02: selisih ukur ±0,0005 (render pertama halaman) tidak mengubah gambar
 }
 function duniaAdegan(a) {
   let dn = M3.dunia.get(a.i);
@@ -282,12 +294,13 @@ function duniaAdegan(a) {
   catch (e) { console.error('Galat di dunia adegan', a.id, e); catatan.push('Galat di dunia adegan ' + a.id + ': ' + e.message); }
   finally { MEMBANGUN = lama; }
   dn.selesaiBangun();
+  if (typeof sinemaAktif === 'function' && sinemaAktif(dn) && typeof sinemaBahan === 'function') sinemaBahan(dn);   // bahan sinematik dulu → eksposur diukur pada bahan akhir (dunia yang dibangun ulang = sama)
   try { ukurEksposur(dn); } catch (e) { console.warn('ukur eksposur', e); }
   M3.dunia.set(a.i, dn);
   while (M3.dunia.size > 4) { const k = M3.dunia.keys().next().value, d0 = M3.dunia.get(k); M3.dunia.delete(k); buang3(d0.scene); }
   return dn;
 }
-function hapusDunia3D() { M3.dunia.forEach(d => buang3(d.scene)); M3.dunia.clear(); }
+function hapusDunia3D() { M3.dunia.forEach(d => buang3(d.scene)); M3.dunia.clear(); if (M3.eksposAdegan) M3.eksposAdegan.clear(); }
 
 /* ------------------------------------------------------------- kamera 3D */
 function kameraBawaan() { return { dari: [0, 1.45, 5], ke: [0, 1.15, 0], fov: POTRET ? 40 : 30, guling: 0 }; }
@@ -297,7 +310,7 @@ function aturKamera3D(dn, a, t, T) {
   if (k === undefined && Object.keys(dn.para).length) k = a.kamera = { bidik: Object.keys(dn.para)[0], jenis: 'penuh', gerak: 'dorong' };   // tanpa kamera: bidik tokoh pertama
   if (typeof k === 'function') k = k(t, dn);
   else if (Array.isArray(k) && k.some(e => adaBidikan(e[1]))) { k = kameraDaftarBidikan(dn, a, t); bidikan = true; }   // 07-bidikan.js
-  else if (adaBidikan(k)) { BEKU = metrikBeku(dn, a, 0, 0, k, a.d); try { k = resolBidikan(dn, k, jepit(t / Math.max(.01, a.d)), a) || {}; } finally { BEKU = null; } bidikan = true; }
+  else if (adaBidikan(k)) { dn._spekKini = k; BEKU = metrikBeku(dn, a, 0, 0, k, a.d); try { k = resolBidikan(dn, k, jepit(t / Math.max(.01, a.d)), a) || {}; } finally { BEKU = null; } bidikan = true; }
   else if (Array.isArray(k)) k = kunci3(t, k, a);
   else if (k && k.orbit) {   // orbit: { ke, jarak, tinggi, sudut: [awal, akhir] (derajat, 0 = depan), ease }
     const o = k, s = lerp(o.sudut ? o.sudut[0] : -15, o.sudut ? o.sudut[1] : 15, fe(o.ease || 'inOutSine')(jepit(t / Math.max(.01, a.d)))) * D2R, ke = o.ke || k0.ke, j = o.jarak ?? 6;
@@ -322,8 +335,7 @@ function aturKamera3D(dn, a, t, T) {
 function gambar3D(c, a, t) {
   const r = rendererM3(); if (!r) { c.fillStyle = P.latar; c.fillRect(0, 0, W, H); return null; }
   const dn = duniaAdegan(a), T = a.mulai + t;
-  aturKamera3D(dn, a, t, T);
-  dn.perbarui(t, T);
+  dn.perbarui(t, T);   // keadaan dunia murni dari t (02-dunia.js: dipulihkan ke dasar dulu) → kamera dihitung dari keadaan ini
   dn._bolehBeku = true; try { aturKamera3D(dn, a, t, T); } finally { dn._bolehBeku = false; }   // sekali lagi: kamera yang mengikuti tokoh/benda memakai posisi bingkai ini (boleh membekukan metrik bidikan)
   dn.cahayaIkutKamera();
   const w = Math.max(2, Math.round(W * SK)), h = Math.max(2, Math.round(H * SK));

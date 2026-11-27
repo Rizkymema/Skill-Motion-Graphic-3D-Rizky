@@ -2200,10 +2200,12 @@ function hasilCek(langkah = 0.25) {
   const fmt = t => t.toFixed(2) + ' dtk', jejak = new Map();
   // pesan yang sama di bingkai berurutan digabung jadi rentang waktu "a–b dtk"
   const catatW = (arr, t, pesan) => { const k = (arr === salah ? 'S' : 'R') + pesan; if (!jejak.has(k)) jejak.set(k, { arr, pesan, t: [] }); jejak.get(k).t.push(t); };
+  if (typeof periksaTeknik3DMulai === 'function') periksaTeknik3DMulai();
   for (let t = 0; t <= DURASI + 1e-6; t += langkah) {
     seek(t);
     if (typeof periksaTembus3D === 'function') periksaTembus3D().forEach(s => catatW(salah, t, s));   // 3D: tembus antar-benda/tokoh, kamera
     if (typeof periksaBidikan3D === 'function') { const pb = periksaBidikan3D(); pb.salah.forEach(s => catatW(salah, t, s)); pb.saran.forEach(s => catatW(saran, t, s)); }   // 3D: wajah tokoh yang bicara terlihat
+    if (typeof periksaTeknik3D === 'function') { const pt = periksaTeknik3D(t); pt.salah.forEach(s => catatW(salah, t, s)); pt.saran.forEach(s => catatW(saran, t, s)); }   // 3D: teknik pengambilan (references/teknik-kamera.md §7)
     const teks = REG.teks.filter(x => !x.tr), sub = REG.sub[0];
     if (t > DURASI - 8 && !ajakanAda) { const s = teks.map(x => x.s).join(' ') + ' ' + (REG.sub.map(x => x.s || '').join(' ')) + ' ' + ((SUARA && SUARA.baris) || []).filter(b => b.mulai + b.durasi > DURASI - 8).map(b => b.teks || '').join(' '); if (RE_AJAKAN.test(s)) ajakanAda = true; }
     teks.forEach(x => {
@@ -2348,6 +2350,7 @@ async function muatUlang() { await siapkanSuara(); susunAdegan(); CACHE_LAPIS.cl
   try { await document.fonts.ready; } catch (e) {}
   await muatUlang();
   WAKTU = jepit(parseFloat(Q.get('t')) || 0, 0, DURASI); seek(WAKTU); perbaruiUI();
+  if (typeof hapusDunia3D === 'function') { hapusDunia3D(); CACHE_LAPIS.clear(); }   // dunia yang dibangun selagi halaman dimuat sedikit beda dari yang dibangun ulang → dibuang; seek berikutnya membangun dalam keadaan normal (bingkai identik di urutan seek mana pun, sejak 27 Nov 2026)
   if (!MODE_RENDER) $('hd').textContent = SK === 1 ? 'HD' : 'Cepat';
   SIAP = true; window.SIAP = true;
   if (catatan.length) tampilkan('<b>Catatan</b>\n' + catatan.join('\n'));

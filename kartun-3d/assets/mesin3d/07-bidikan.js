@@ -25,33 +25,67 @@ function infoTokoh(dn, id) {
 }
 const _yUp = new THREE.Vector3(0, 1, 0);
 function putarY(v, derajat) { return v.clone().applyAxisAngle(_yUp, derajat * D2R); }
+/* --- TEKNIK PENGAMBILAN (sejak 27 Nov 2026, dari bedah RicksClips3000 + reel IG; references/teknik-kamera.md) ---
+   · GARIS MATA: subjek dibingkai dari posisi MATA, bukan ubun-ubun (dulu mata close-up jatuh di ±55 % tinggi → mulut masuk zona subtitle/UI).
+     9:16: wajah .40 · dekat .38 · setengah .36 · atasBahu .35 · dua .33 · lutut .32 dari atas (ruang teks atas tetap ada); 16:9: .40/.38/.36/.36/.34/.33. Timpa: { mata: .35 }.
+   · GARIS 180°: atasBahu/dua selalu di sisi garis tokoh yang sama dengan kamera awal adegan (A→B lalu B→A tidak lagi menyeberang garis).
+     Balik: adegan.sisiGaris: -1; sisi: 'kiri'|'kanan' manual tetap seperti dulu.
+   · RUANG PANDANG: tokoh yang menoleh/menatap ke samping digeser ke sisi belakang tatapan (±12 % lebar); tangan yang menunjuk dijaga di dalam bingkai.
+     Matikan: { ruang: false }; posisi manual { posisi: 'kiri'|'kanan' } tetap menang.
+   · PUSH MENDARAT: { gerak: 'dorong', tiba: 'L05.w3', kuat: .15, lama: 1.4 } → kamera mulai mendekat `lama` dtk sebelum `tiba`, melambat, dan TIBA tepat
+     di kata itu, lalu hanyut pelan ±1 %/dtk. 'tarik' + tiba = menjauh dan selesai di waktu itu. Tanpa `tiba` = perilaku lama (merata sepanjang bidikan). */
+const MATA_POTRET = { wajah: .40, dekat: .38, setengah: .36, atasBahu: .35, dua: .33, lutut: .32 }, MATA_LEBAR = { wajah: .40, dekat: .38, setengah: .36, atasBahu: .36, dua: .34, lutut: .33 };
+function mataTarget(s, jenis) { return s.mata ?? (POTRET ? MATA_POTRET : MATA_LEBAR)[jenis]; }
+function titikMata(I) { return I.H.clone().add(new THREE.Vector3(0, -I.tk.R * I.sk * .04, 0)); }
+const _camB = new THREE.PerspectiveCamera(40, 1, .05, 400);
+function camUji(dari, ke, fov) { const c = _camB; c.fov = fov ?? fovBawaan(); c.aspect = W / H; c.position.copy(dari); c.up.set(0, 1, 0); c.lookAt(ke); c.updateProjectionMatrix(); c.updateMatrixWorld(); return c; }
+/** geser dari+ke tegak supaya titik p jatuh di tinggi layar e (0 = atas) — dua langkah koreksi proyeksi (benar juga untuk sudut rendah/tinggi) */
+function aturGarisMata(dari, ke, fov, p, e, cov) {
+  for (let i = 0; i < 2; i++) { const v = p.clone().project(camUji(dari, ke, fov)), fy = (1 - v.y) / 2, d = (e - fy) * cov; dari.y += d; ke.y += d; }
+}
+/** tanda vektor 'kanan' (ab.z, 0, −ab.x) supaya kamera di sisi garis A→B yang sama dengan rujukan (kamera awal adegan) */
+function sisiGaris(dn, A, B, a) {
+  const ref = dn.kameraAwal ? dn.kameraAwal : new THREE.Vector3(...kameraBawaan().dari), ab = B.H.clone().sub(A.H);
+  let sg = Math.sign(ab.x * (ref.z - A.H.z) - ab.z * (ref.x - A.H.x)) || 1; if (a && a.sisiGaris === -1) sg = -sg;
+  return -sg;   // cross(ab, kanan) = −1 → kamera di sisi rujukan bila kanan dikali −sg
+}
+function waktuTiba(s, a) { const v = s.tiba; if (v === undefined || v === null) return null; return typeof v === 'number' ? v : wl(v, a); }
 /** kamera {dari, ke, fov} dari satu bidikan; p = kemajuan 0..1 di dalam bidikan (untuk gerak) */
 function resolBidikan(dn, s, p, a) {
   const fov = s.fov ?? fovBawaan(), tanH = Math.tan(fov * D2R / 2), asp = W / H, e = E.inOutSine(jepit(p));
-  const gerak = s.gerak ?? 'dorong';
+  const gerak = s.gerak ?? 'dorong', tTiba = waktuTiba(s, a);
   let jarakK = 1, sudutTambah = 0, naik = 0, geser = 0;
-  if (gerak === 'dorong') jarakK = lerp(1.07, .95, e); else if (gerak === 'tarik') jarakK = lerp(.95, 1.1, e);
+  if (tTiba !== null && (gerak === 'dorong' || gerak === 'tarik')) {   // push/pull yang mendarat tepat di waktu tiba
+    const kuat = s.kuat ?? .15, lama = Math.max(.3, s.lama ?? 1.4), t = dn.t, m0 = tTiba - lama;
+    const k = t <= m0 ? 0 : t >= tTiba ? 1 : E.outCubic((t - m0) / lama), hanyut = t > tTiba ? Math.min(.06, (t - tTiba) * .01) : t < m0 ? -Math.min(.04, (m0 - t) * .006) : 0;
+    jarakK = gerak === 'dorong' ? 1 + kuat * (1 - k) - hanyut : 1 + kuat * k + hanyut;
+  }
+  else if (gerak === 'dorong') jarakK = lerp(1.07, .95, e); else if (gerak === 'tarik') jarakK = lerp(.95, 1.1, e);
   else if (gerak === 'orbit') sudutTambah = lerp(-9, 9, e); else if (gerak === 'naik') naik = lerp(-.08, .22, e); else if (gerak === 'geser') geser = lerp(-.14, .14, e);
   jarakK *= s.jarak ?? 1;
-  let ke, arah, cov, subjek = [];
+  let ke, arah, cov, subjek = [], mataP = null, mataE = null, jenisM = s.jenis || 'setengah', utama = null;
   if (s.pov) {   // sudut pandang tokoh: dari mata, melihat ke arah hadap (atau s.ke)
     const A = infoTokoh(dn, s.pov); if (!A) return null;
     const mata = A.H.clone().add(A.f.clone().multiplyScalar(A.tk.R * A.sk * 1.2)).add(new THREE.Vector3(0, -A.tk.R * A.sk * .05, 0));
     const tuju = s.ke ? new THREE.Vector3(...dn.titik(s.ke)) : mata.clone().add(putarY(A.f, (s.sudut || 0) + sudutTambah).multiplyScalar(3)).add(new THREE.Vector3(0, -.25, 0));
     return { dari: mata.toArray(), ke: tuju.toArray(), fov: s.fov ?? (POTRET ? 52 : 40) };
   }
-  if (s.atasBahu) {   // di atas bahu A, melihat wajah B
+  if (s.atasBahu) {   // di atas bahu A, melihat wajah B — selalu di sisi garis A–B yang sama (garis 180°)
     const A = infoTokoh(dn, s.atasBahu[0]), B = infoTokoh(dn, s.atasBahu[1]); if (!A || !B) return null;
-    const ab = B.H.clone().sub(A.H); ab.y = 0; const L = ab.length() || 1; ab.normalize();
-    const buat = sisi => { const kanan = new THREE.Vector3(ab.z, 0, -ab.x).multiplyScalar(sisi);
-      const dari = A.H.clone().add(ab.clone().multiplyScalar(-(1.85 + .3 * (jarakK - 1)) * A.sk)).add(kanan.clone().multiplyScalar(.95 * A.sk)).add(new THREE.Vector3(0, -.05 * A.sk + naik, 0));
-      const ke = B.H.clone().add(new THREE.Vector3(0, -B.tk.R * B.sk * .35, 0)).add(kanan.clone().multiplyScalar(-.12 + geser));   // A di tepi bingkai (bahu + belakang kepala), wajah B di tengah
-      return hindariHalangan(dn, { dari: dari.toArray(), ke: ke.toArray(), fov: s.fov ?? (POTRET ? 36 : 30) }, [B], Object.assign({ jenis: 'atasBahu' }, s, { _sisi: sisi }), [A.tk]); };
-    const sisi0 = s.sisi === 'kiri' ? -1 : s.sisi === 'kanan' ? 1 : (BEKU && BEKU._sisi) || 1;
-    let c = buat(sisi0);
-    if (!s.sisi && c._skor > 0) { const c2 = buat(-sisi0); if (c2._skor < c._skor) { c = c2; if (BEKU) BEKU._sisi = -sisi0; } }   // lengan/badan tokoh bahu menutupi tengah → pindah ke bahu sebelah
-    else if (BEKU && !BEKU._sisi) BEKU._sisi = sisi0;
-    if (c._skor >= 1 && s.cadangan !== false) { const s2 = Object.assign({}, s, { atasBahu: undefined, bidik: s.atasBahu[1], jenis: 'dekat' }); return resolBidikan(dn, s2, p, a) || c; }   // kedua bahu bermasalah (tokoh bahu besar/berhiasan kepala lebar menutupi tengah, mulut tertutup) → close-up yang bicara
+    const ab = B.H.clone().sub(A.H); ab.y = 0; ab.normalize();
+    const sisi = s.sisi === 'kiri' ? -1 : s.sisi === 'kanan' ? 1 : sisiGaris(dn, A, B, a);
+    const kanan = new THREE.Vector3(ab.z, 0, -ab.x).multiplyScalar(sisi), fovB = s.fov ?? (POTRET ? 36 : 30);
+    const dari = A.H.clone().add(ab.clone().multiplyScalar(-1.85 * jarakK * A.sk)).add(kanan.clone().multiplyScalar(.95 * A.sk * (A.tk.gemuk > 1.1 ? 1.25 : 1))).add(new THREE.Vector3(0, -.05 * A.sk + naik, 0));   // tokoh bahu gemuk: kamera lebih ke samping (tidak masuk badan)
+    const keB = B.H.clone().add(new THREE.Vector3(0, -B.tk.R * B.sk * .35, 0)).add(kanan.clone().multiplyScalar(-.12 + geser));   // A di tepi bingkai (bahu + belakang kepala), wajah B di tengah
+    if (s.komposisi !== 'lama') {   // komposisi OTS acuan: kepala/bahu A di ±0,6 lebar (sepertiga luar), wajah B di sepertiga lain
+      const halfH = Math.atan(Math.tan(fovB * D2R / 2) * W / H), dA = A.H.clone().sub(dari), dB = B.H.clone().sub(dari), angA = Math.atan2(dA.x, dA.z), angB = Math.atan2(dB.x, dB.z);
+      let del = angB - angA; del = Math.atan2(Math.sin(del), Math.cos(del)); const sg = Math.sign(del) || 1, ad = Math.abs(del);
+      const ang = angA + sg * Math.max(Math.min(.58 * halfH, ad * .75), ad - .62 * halfH), Lb = Math.hypot(dB.x, dB.z);
+      keB.set(dari.x + Math.sin(ang) * Lb, keB.y, dari.z + Math.cos(ang) * Lb);
+    }
+    if (s.mata !== false) aturGarisMata(dari, keB, fovB, titikMata(B), mataTarget(s, 'atasBahu'), dari.distanceTo(keB) * 2 * Math.tan(fovB * D2R / 2));
+    const c = hindariHalangan(dn, { dari: dari.toArray(), ke: keB.toArray(), fov: fovB }, [B], Object.assign({ jenis: 'atasBahu' }, s, { _sisi: sisi }), [A.tk]);
+    if (c._skor >= 1 && s.cadangan !== false) { const s2 = Object.assign({}, s, { atasBahu: undefined, bidik: s.atasBahu[1], jenis: 'dekat' }); return resolBidikan(dn, s2, p, a) || c; }   // bahu tokoh depan menutupi wajah → close-up yang bicara (tidak menyeberang garis)
     return c;
   }
   if (s.benda) {   // sisipan benda: kotak batas benda, sudut tiga-perempat sedikit dari atas
@@ -62,32 +96,63 @@ function resolBidikan(dn, s, p, a) {
     const dari = c.clone().add(arah.clone().multiplyScalar(jarak)).add(new THREE.Vector3(0, jarak * tinggiK + naik * cov, 0));
     return hindariHalangan(dn, { dari: dari.toArray(), ke: c.toArray(), fov }, [{ H: c }], s, [], o);
   }
-  if (s.dua) {   // dua tokoh dalam satu bingkai (wajah keduanya terlihat)
+  if (s.dua) {   // dua tokoh dalam satu bingkai (wajah keduanya terlihat 3/4); 9:16: bahu luar boleh terpotong, garis mata .31
     const A = infoTokoh(dn, s.dua[0]), B = infoTokoh(dn, s.dua[1]); if (!A || !B) return null;
-    subjek = [A, B];
+    subjek = [A, B]; jenisM = 'dua';
     const ab = B.H.clone().sub(A.H); ab.y = 0; const L = ab.length();
     let n = new THREE.Vector3(-ab.z, 0, ab.x); if (n.lengthSq() < 1e-6) n.set(0, 0, 1); n.normalize();
-    const muka = A.f.clone().add(B.f); if (n.dot(muka) < 0 || (Math.abs(n.dot(muka)) < .2 && n.z < 0)) n.negate();
-    arah = putarY(n, (s.sudut ?? (POTRET ? 28 : 12)) + sudutTambah);
-    const lebarPerlu = L * Math.abs(arah.clone().cross(ab.clone().normalize()).y) + 1.3 * Math.max(A.sk, B.sk);   // jarak kedua kepala yang terlihat dari arah kamera + bahu
+    const muka = A.f.clone().add(B.f), nm = n.dot(muka);
+    if (Math.abs(nm) >= .2) { if (nm < 0) n.negate(); }   // keduanya menghadap ke satu sisi → kamera di sisi wajah
+    else { const sg = sisiGaris(dn, A, B, a), kanan = new THREE.Vector3(ab.z, 0, -ab.x).multiplyScalar(sg); if (n.dot(kanan) < 0) n.negate(); }   // saling berhadapan → sisi garis 180°
+    arah = putarY(n, (s.sudut ?? (POTRET ? 10 : 12)) + sudutTambah);
+    const lebarPerlu = L * Math.abs(arah.clone().cross(ab.clone().normalize()).y) + (POTRET ? .7 : 1.3) * Math.max(A.sk, B.sk);   // jarak kedua kepala yang terlihat dari arah kamera + bahu
     cov = Math.max((BIDIKAN[s.jenis || 'setengah'] || .78) * Math.max(A.h, B.h), lebarPerlu / asp * .92);
-    ke = A.H.clone().add(B.H).multiplyScalar(.5); ke.y = Math.max(A.atas, B.atas) - cov * (POTRET ? .3 : .34);   // 9:16: ruang kepala ±20 % (di bawah zona teks atas)
+    ke = A.H.clone().add(B.H).multiplyScalar(.5); ke.y = Math.max(A.atas, B.atas) - cov * (POTRET ? .3 : .34);
+    const mA = titikMata(A), mB = titikMata(B); mataP = mA.y > mB.y ? mA : mB; mataE = mataTarget(s, 'dua');
   } else {   // satu tokoh
     const A = infoTokoh(dn, s.bidik); if (!A) return null;
-    subjek = [A];
+    subjek = [A]; utama = A;
     cov = (BIDIKAN[s.jenis || 'setengah'] || .78) * A.h;
     const dekat = s.jenis === 'wajah' || s.jenis === 'dekat', pakaiKepala = dekat || s.jenis === 'setengah' || !s.jenis, fh = pakaiKepala ? new THREE.Vector3(A.fk.x, 0, A.fk.z) : A.f.clone(); if (fh.lengthSq() < 1e-4) fh.copy(A.f); fh.normalize();
     arah = putarY(fh, (s.sudut ?? 18) + sudutTambah);
     if (dekat) naik += jepit(A.fk.y, -.6, .3) * .9;   // wajah menunduk → kamera lebih rendah, tetap menatap wajah
     ke = A.H.clone(); ke.y = A.atas - cov * (POTRET ? .3 : .34);
     if (s.jenis === 'penuh' || s.jenis === 'lebar') ke.y = Math.max(ke.y, A.kaki.y + cov * .5 - cov * .08);
+    else { mataP = titikMata(A); mataE = mataTarget(s, jenisM); }
     if (s.posisi === 'kiri' || s.posisi === 'kanan') { const kn = new THREE.Vector3(arah.z, 0, -arah.x); ke.add(kn.multiplyScalar((s.posisi === 'kiri' ? 1 : -1) * cov * asp * .17)); }
   }
   const jarak = cov / 2 / tanH * jarakK;
   const tinggiOff = s.tinggi === 'rendah' ? -cov * .32 : s.tinggi === 'tinggi' ? cov * .45 : s.tinggi === 'atas' ? jarak * 1.2 : 0;
   const kn = new THREE.Vector3(arah.z, 0, -arah.x);
   const dari = ke.clone().add(arah.clone().multiplyScalar(jarak)).add(new THREE.Vector3(0, tinggiOff + naik * cov, 0)).add(kn.multiplyScalar(geser * cov));
-  return hindariHalangan(dn, { dari: dari.toArray(), ke: ke.toArray(), fov }, subjek, s);
+  if (mataP && mataE !== undefined && s.mata !== false && s.tinggi !== 'atas') aturGarisMata(dari, ke, fov, mataP, mataE, cov * jarakK);
+  if (utama && s.ruang !== false && !s.posisi) ruangPandang(dn, utama, dari, ke, fov, cov * jarakK, s);
+  const c = hindariHalangan(dn, { dari: dari.toArray(), ke: ke.toArray(), fov }, subjek, s);
+  if (mataP && mataE !== undefined && s.mata !== false && s.tinggi !== 'atas') {   // penghindar halangan bisa memutar/memajukan kamera → garis mata ditegakkan lagi
+    const d2 = new THREE.Vector3(...c.dari), k2 = new THREE.Vector3(...c.ke); aturGarisMata(d2, k2, c.fov ?? fov, mataP, mataE, d2.distanceTo(k2) * 2 * Math.tan((c.fov ?? fov) * D2R / 2));
+    jagaLantai(dn, d2); c.dari = d2.toArray(); c.ke = k2.toArray();
+  }
+  return c;
+}
+/** ruang pandang: subjek yang menatap ke samping layar digeser ke sisi belakang tatapan; tangan yang terulur (setengah/lutut/penuh) dijaga di dalam bingkai */
+function ruangPandang(dn, A, dari, ke, fov, cov, s) {
+  const c = camUji(dari, ke, fov), kanan = new THREE.Vector3(1, 0, 0).applyQuaternion(c.quaternion); kanan.y = 0; kanan.normalize();
+  const lebar = cov * W / H, f = new THREE.Vector3(A.fk.x, 0, A.fk.z); if (f.lengthSq() < 1e-4) f.copy(A.f); f.normalize();
+  const tatap = f.dot(kanan);   // + = menatap ke kanan layar
+  let geserX = Math.abs(tatap) > .25 ? Math.sign(tatap) * .12 * Math.min(1, (Math.abs(tatap) - .25) / .45) * lebar : 0;
+  const tangan = [];
+  if (['setengah', 'lutut', 'penuh', undefined].includes(s.jenis)) {   // tangan terulur keluar bingkai → geser (maks 22 % lebar)
+    for (const n of ['Ka', 'Ki']) {
+      const h = A.tk.lengan[n].tangan.localToWorld(new THREE.Vector3(0, -.1, 0)); tangan.push(h);
+      const v = h.clone().sub(kanan.clone().multiplyScalar(geserX)).project(c);
+      if (v.z < 1 && Math.abs(v.x) > .9) { const perlu = (Math.abs(v.x) - .86) / 2 * lebar * Math.sign(v.x); geserX = jepit(geserX + perlu, -.22 * lebar, .22 * lebar); }
+    }
+  }
+  if (geserX) { const d = kanan.clone().multiplyScalar(geserX); dari.add(d); ke.add(d); }
+  if (tangan.length) {   // masih keluar sesudah digeser (lengan lurus lebih panjang dari setengah lebar 9:16) → kamera mundur sedikit (maks 1,4×)
+    const c2 = camUji(dari, ke, fov); let maks = 0; for (const h of tangan) { const v = h.clone().project(c2); if (v.z < 1) maks = Math.max(maks, Math.abs(v.x)); }
+    if (maks > .92) { const f = Math.min(1.4, maks / .86); dari.copy(ke.clone().add(dari.clone().sub(ke).multiplyScalar(f))); }
+  }
 }
 /** bila benda padat menghalangi garis kamera → wajah, putar kamera mengelilingi subjek (±15°…±60°); bila tetap terhalang, majukan kamera ke depan halangan */
 const _ray = new THREE.Raycaster();
@@ -119,7 +184,7 @@ function skorKamera(dn, d, ke, fov, subjek, s, kecualiTokoh) {
     titik.push(new THREE.Vector3(...tk.titik('kepala')));
     for (const p of titik) { v.copy(p).project(c); if (v.z > 1 || Math.abs(v.x) > 1.06 || Math.abs(v.y) > 1.04) continue;   // sedikit di luar tepi pun dihitung: bola tangan/kepala menyusup masuk
       const depan = p.distanceTo(d) < dSub - .12;
-      if (bahu) { if (depan && Math.abs(v.x) < .34 && v.y > -.7) skor += 1; }   // bahu boleh di tepi, bukan di tengah
+      if (bahu) { if (depan && Math.abs(v.x) < .3 && v.y > (p === titik[titik.length - 1] ? -.7 : -.2)) skor += 1; }   // bahu/kepala tokoh depan boleh di tepi, tangannya boleh di bawah bingkai; yang dilarang: menutupi tengah
       else if (depan && dekat) skor += 1;   // anggota tubuh tokoh lain di depan subjek, di dalam close-up
     }
     if (lebar && !bahu) { const h = new THREE.Vector3(...tk.titik('kepala')); v.copy(h).project(c);
@@ -131,12 +196,15 @@ function hindariHalangan(dn, cam, subjek, s, kecualiTokoh = [], bendaSubjek = nu
   if (s.halangan === false || !subjek.length) { const d = jagaLantai(dn, new THREE.Vector3(...cam.dari)); return Object.assign(cam, { dari: d.toArray(), _skor: 0 }); }
   const ke = new THREE.Vector3(...cam.ke), dari0 = new THREE.Vector3(...cam.dari), wajah = subjek.map(x => x.H);
   const lain = badanTokoh(dn, [...subjek.map(x => x.tk).filter(Boolean), ...kecualiTokoh]);   // tokoh lain juga penghalang (bukan subjek, bukan bahu di atasBahu)
-  const bebas = d => !diDalamPadat(dn, d) && !wajah.some(w => terhalang(dn, d, w, lain, bendaSubjek));
-  const jadi = (d, sk, sd) => { if (BEKU) BEKU['_sd' + (s.jenis || '') + (s._sisi || '')] = sd; return { dari: d.toArray(), ke: cam.ke, fov: cam.fov, _skor: sk }; };
+  const dalamTokoh = d => { const cap = dn._cap; for (const id in dn.para) { const tk = dn.para[id]; if (!tk.akar.visible || tk.o.padat === false) continue; if (jarakKe(tk.mKepala, d, cap) < .14 || jarakKe(tk.mBadan, d, cap) < .14) return true; } return false; };
+  const bebas = d => !diDalamPadat(dn, d) && !dalamTokoh(d) && !wajah.some(w => terhalang(dn, d, w, lain, bendaSubjek));
+  const kunci = '_sd' + (s.jenis || '') + (s._sisi || '');
+  const jadi = (d, sk, sd) => { if (BEKU && BEKU_TETAP) (BEKU[kunci] = BEKU[kunci] || []).push([BEKU._tCatat ?? dn.t, sd]); return { dari: d.toArray(), ke: cam.ke, fov: cam.fov, _skor: sk }; };   // keputusan HANYA dicatat saat ditetapkan (awal bidikan / titik periksa) → tidak bergantung urutan bingkai
   const putar = sd => jagaLantai(dn, sd ? ke.clone().add(putarY(dari0.clone().sub(ke), sd)) : dari0.clone());
-  const ingat = BEKU && BEKU['_sd' + (s.jenis || '') + (s._sisi || '')];   // sudut yang dipilih di awal bidikan dipertahankan selama masih bebas (kamera tidak melompat di tengah bidikan)
+  // sudut yang ditetapkan di awal bidikan (+ titik periksa tiap 0,5 dtk) dipakai: yang terakhir ≤ t (kamera tidak melompat, deterministik)
+  const daftar = BEKU && BEKU[kunci]; let ingat; if (daftar && daftar.length) { ingat = daftar[0][1]; for (const [tk, sd] of daftar) if (tk <= dn.t + 1e-6) ingat = sd; }
   if (ingat !== undefined && ingat !== null) { const d = putar(ingat); if (bebas(d)) {
-    const skKini = skorKamera(dn, d, ke, cam.fov, subjek, s, kecualiTokoh); if (skKini < .75 || !dn._bolehBeku) return jadi(d, skKini, ingat);
+    const skKini = skorKamera(dn, d, ke, cam.fov, subjek, s, kecualiTokoh); if (skKini < .75 || !(BEKU_TETAP && BEKU._titik)) return jadi(d, skKini, ingat);
     // masalah muncul di TENGAH bidikan (kamera dolly mendekat ke tiang, pose berubah menutup mulut): cari sudut lain, pindah hanya bila jauh lebih baik (tidak bergoyang)
     let baik = { d, sk: skKini, sd: ingat, nilai: skKini };
     for (const sd of [0, 15, -15, 30, -30, 45, -45, 60, -60]) { if (sd === ingat) continue; const d2 = putar(sd); if (!bebas(d2)) continue; const sk = skorKamera(dn, d2, ke, cam.fov, subjek, s, kecualiTokoh), nilai = sk + Math.abs(sd - ingat) / 120; if (nilai < baik.nilai - .5) baik = { d: d2, sk, sd, nilai }; }
@@ -155,9 +223,14 @@ function hindariHalangan(dn, cam, subjek, s, kecualiTokoh = [], bendaSubjek = nu
   const fov0 = cam.fov ?? fovBawaan(), fov = Math.min(75, 2 * Math.atan(Math.tan(fov0 * D2R / 2) * L0 / Math.max(.3, L)) / D2R);
   return { dari: jagaLantai(dn, ke.clone().add(arah.multiplyScalar(L))).toArray(), ke: cam.ke, fov, _skor: 0 };
 }
-/** metrik subjek di awal bidikan (t0): setel dunia ke t0 sebentar (bila boleh), catat arah + skala, kembalikan. Disimpan per dunia per bidikan. */
+/** metrik subjek di awal bidikan (t0): setel dunia ke t0 sebentar (bila boleh), catat arah + skala, kembalikan. Disimpan per dunia per bidikan.
+    Sejak 27 Nov 2026 juga menetapkan sudut penghindar halangan di titik periksa tiap 0,5 dtk sampai akhir bidikan (dulu diputuskan ulang di
+    bingkai mana pun yang kebetulan dirender lebih dulu → foto cek ≠ ekspor). */
+let BEKU_TETAP = false;
 function metrikBeku(dn, a, idx, t0, spek, t1) {
-  t0 = Math.min(t0 + .5, t0 + Math.max(0, ((t1 ?? (t0 + 1)) - t0) * .5));   // dibekukan saat tokoh sudah 'mapan' (perpindahan pose/hadap ±0,4 dtk selesai)
+  const tAwal = t0; t1 = t1 ?? (t0 + 1);
+  if (dn._kamSementara) return null;   // kamera sementara di dalam perbarui (lintasan 1): jangan menetapkan apa pun
+  t0 = Math.min(t0 + .5, t0 + Math.max(0, (t1 - t0) * .5));   // dibekukan saat tokoh sudah 'mapan' (perpindahan pose/hadap ±0,4 dtk selesai)
   const kunci = idx + '|' + t0.toFixed(3); dn._beku = dn._beku || new Map();
   if (dn._beku.has(kunci)) return dn._beku.get(kunci);
   const ids = [spek.bidik, ...(spek.dua || []), ...(spek.atasBahu || [])].filter(id => id && dn.para[id]);
@@ -166,8 +239,14 @@ function metrikBeku(dn, a, idx, t0, spek, t1) {
   if (!samaWaktu && !dn._bolehBeku) return null;   // belum boleh menyetel ulang dunia (panggilan sebelum perbarui) → metrik hidup
   if (!samaWaktu) dn.perbarui(t0, a.mulai + t0);
   const m = {}; for (const id of ids) { BEKU = null; const I = infoTokoh(dn, id); if (I) m[id] = { f: I.f, fk: I.fk, sk: I.sk, h: I.h }; }
-  BEKU = m; try { resolBidikan(dn, spek, 0, a); } catch (e) { } finally { BEKU = null; }   // sudut/sisi penghindar halangan diputuskan SEKALI di awal bidikan (deterministik: pratinjau = ekspor)
-  if (!samaWaktu) dn.perbarui(tKini, TKini);
+  BEKU = m; BEKU_TETAP = true; try { resolBidikan(dn, spek, 0, a); } catch (e) { } finally { BEKU = null; BEKU_TETAP = false; }   // sudut/sisi penghindar halangan diputuskan di awal bidikan
+  let ubah = !samaWaktu; m._titik = true;
+  for (let tk = t0 + .25; tk < t1 - .05; tk += .25) {   // titik periksa: masalah yang muncul di tengah bidikan (dolly ke tiang, pose menutup mulut)
+    const tNilai = Math.min(tk + .12, t1 - .02); dn.perbarui(tNilai, a.mulai + tNilai); ubah = true;   // nilai keadaan di tengah segmen (lengan tokoh lain yang akan masuk lensa sudah terlihat)
+    BEKU = m; BEKU_TETAP = true; m._tCatat = tk; try { resolBidikan(dn, spek, jepit((tk - tAwal) / Math.max(.01, t1 - tAwal)), a); } catch (e) { } finally { BEKU = null; BEKU_TETAP = false; delete m._tCatat; }
+  }
+  delete m._titik;
+  if (ubah) dn.perbarui(tKini, TKini);
   dn._beku.set(kunci, m); return m;
 }
 /** daftar bidikan [[t, bidikan, perpindahan], …]: tiap entri berlaku sampai entri berikutnya */
@@ -177,6 +256,7 @@ function kameraDaftarBidikan(dn, a, t) {
   let i = 0; while (i + 1 < kf.length && t >= kf[i + 1][0]) i++;
   const t0 = kf[i][0], t1 = i + 1 < kf.length ? kf[i + 1][0] : a.d, p = jepit((t - t0) / Math.max(.01, t1 - t0));
   const resol = (spek, pp, idx, tAwal) => { if (!adaBidikan(spek)) return Object.assign({}, kameraBawaan(), spek); BEKU = metrikBeku(dn, a, idx, tAwal, spek, idx + 1 < kf.length ? kf[idx + 1][0] : a.d); try { return resolBidikan(dn, spek, pp, a); } finally { BEKU = null; } };
+  dn._spekKini = kf[i][1];   // cek teknik: bidikan yang sedang berlaku
   let cam = resol(kf[i][1], p, i, t0) || kameraBawaan();
   const nx = kf[i + 1];
   if (nx && nx[2] && nx[2] !== 'potong') {
@@ -264,3 +344,69 @@ Dunia3D.prototype.periksaLatar = function () {
 function periksaBidikan3D() { const out = { salah: [], saran: [] }; for (const dn of M3.digambar || []) { dn.periksaBidikan().forEach(s => out.salah.push(`adegan "${dn.a.id}": ${s}`)); dn.saranBidikan().forEach(s => out.saran.push(`adegan "${dn.a.id}": ${s}`));
   const ks = dn.periksaLatar(); if (ks > .04) out.salah.push(`adegan "${dn.a.id}": latar kosong ±${Math.round(ks * 20) * 5} % bingkai (kamera melihat ke luar ruang) — pakai ruang() bawaan (tertutup 4 sisi + plafon), perbesar ruang, atau ubah sudut kamera`); }
   return out; }
+
+/* --- CEK TEKNIK PENGAMBILAN (sejak 27 Nov 2026; references/teknik-kamera.md §7). Dipanggil hasilCek tiap langkah waktu, berurutan.
+   Hasil = SARAN (daftar peringatan dengan rentang waktu): garis mata close-up, bidikan terlalu pendek, kamera diam > 1 dtk, garis 180°
+   terlanggar di potongan, reaksi di detik yang sama dengan aksi, ganti pose terlalu rapat, tangan isyarat keluar bingkai, kepala terpotong tepi. */
+const CEK_T = { siap: new Set(), kam: null, diam: 0, sisi: new Map() };
+function periksaTeknik3DMulai() { CEK_T.siap = new Set(); CEK_T.kam = null; CEK_T.diam = 0; CEK_T.sisi = new Map(); }
+const REAKSI_NAMA = new Set(['kaget', 'takut', 'marah', 'sedih', 'bingung', 'mundurTakut', 'peganKepala', 'menangis']);
+function statikTeknik(dn) {
+  const a = dn.a, out = [], kf = a.kamera;
+  if (Array.isArray(kf) && kf._siapB) kf.forEach((e, i) => {
+    const t1 = i + 1 < kf.length ? kf[i + 1][0] : a.d, d = t1 - e[0];
+    if (d < .6 && !(e[1] && e[1].benda)) out.push(`bidikan ke-${i + 1} hanya ${d.toFixed(2)} dtk (acuan ≥ 0,8 dtk; sisipan benda 0,5–1 dtk)`);
+    const tb = e[1] && e[1].tiba !== undefined ? waktuTiba(e[1], a) : null; if (tb !== null && (tb < e[0] || tb > t1)) out.push(`bidikan ke-${i + 1}: tiba ${tb.toFixed(2)} dtk di luar rentang bidikan ${e[0].toFixed(2)}–${t1.toFixed(2)}`);
+  });
+  const kunci = v => (Array.isArray(v) && Array.isArray(v[0]) ? v.map(q => [wl(q[0], a) ?? 0, q[1]]) : []);
+  const aksi = [], reaksi = [];
+  for (const id in dn.para) {
+    const o = dn.para[id].o, ps = kunci(o.pose), es = kunci(o.ekspresi);
+    ps.forEach((q, i) => {
+      if (i && POSE_AKSI.has(q[1]) && !REAKSI_NAMA.has(q[1])) aksi.push([q[0], id, q[1]]);
+      if (i && REAKSI_NAMA.has(q[1])) reaksi.push([q[0], id, q[1]]);
+      if (i && ps[i - 1][0] > .05 && q[0] - ps[i - 1][0] < .45) out.push(`tokoh "${id}" ganti pose ${ps[i - 1][1]} → ${q[1]} hanya ${(q[0] - ps[i - 1][0]).toFixed(2)} dtk (acuan ≥ 0,45 dtk supaya terbaca)`);
+    });
+    es.forEach((q, i) => { if (i && REAKSI_NAMA.has(q[1])) reaksi.push([q[0], id, q[1]]); });
+  }
+  const sudah = new Set();
+  for (const r of reaksi) for (const x of aksi) if (x[1] !== r[1] && Math.abs(x[0] - r[0]) < .12 && !sudah.has(r[1] + x[1])) { sudah.add(r[1] + x[1]); out.push(`reaksi "${r[1]}" (${r[2]}) di detik yang sama dengan aksi "${x[1]}" (${x[2]}) — tunda 0,3–0,6 dtk atau tulis reaksi: [[t, '${r[2]}']]`); }
+  return out;
+}
+function periksaTeknik3D(t) {
+  const out = { salah: [], saran: [] };
+  for (const dn of M3.digambar || []) {
+    const a = dn.a, cam = dn.kamera, spek = dn._spekKini;
+    if (!CEK_T.siap.has(a.id)) { CEK_T.siap.add(a.id); statikTeknik(dn).forEach(s => out.saran.push(`adegan "${a.id}": ${s}`)); }
+    if (!Object.keys(dn.para).length) continue;
+    // kamera diam / potongan (dibanding langkah cek sebelumnya)
+    const ke = new THREE.Vector3(...(dn._ke || [0, 0, 0])), pos = cam.position.clone(), jarak = Math.max(.3, pos.distanceTo(ke));
+    let potong = false;
+    if (CEK_T.kam && CEK_T.kam.id === a.id) {
+      const dt = Math.max(.05, t - CEK_T.kam.t), gerak = (pos.distanceTo(CEK_T.kam.pos) + ke.distanceTo(CEK_T.kam.ke) * .5) / jarak / dt + Math.abs(cam.fov - CEK_T.kam.fov) / cam.fov / dt;
+      potong = pos.distanceTo(CEK_T.kam.pos) > .35 * jarak || ke.distanceTo(CEK_T.kam.ke) > .35 * jarak;
+      CEK_T.diam = !potong && gerak < .025 ? CEK_T.diam + dt : 0;
+      if (CEK_T.diam > 1.0) out.saran.push(`adegan "${a.id}": kamera hampir diam > 1 dtk (acuan RicksClips: diam ≤ 0,7 dtk — beri gerak dorong/tarik/orbit; gaya film IG boleh diam bila tokohnya bergerak)`);
+    } else { CEK_T.diam = 0; potong = true; }
+    // garis 180°: dua tokoh yang sama-sama di bingkai tidak boleh bertukar sisi layar di potongan
+    const vis = Object.keys(dn.para).filter(id => dn.para[id].akar.visible).map(id => [id, new THREE.Vector3(...dn.para[id].titik('kepala')).project(cam)]).filter(([, v]) => v.z < 1 && Math.abs(v.x) < 1 && Math.abs(v.y) < 1);
+    for (let i = 0; i < vis.length; i++) for (let j = i + 1; j < vis.length; j++) {
+      const [ia, va] = vis[i], [ib, vb] = vis[j], k = a.id + '|' + [ia, ib].sort().join('|'), sg = Math.sign((ia < ib ? 1 : -1) * (va.x - vb.x)), lalu = CEK_T.sisi.get(k);
+      if (lalu && potong && lalu !== sg && Math.abs(va.x - vb.x) > .15) out.saran.push(`adegan "${a.id}": garis 180° — "${ia}" dan "${ib}" bertukar sisi layar di potongan (tokoh kiri harus tetap di kiri; pakai bidikan atasBahu/dua otomatis atau adegan.sisiGaris)`);
+      if (Math.abs(va.x - vb.x) > .15) CEK_T.sisi.set(k, sg);
+    }
+    CEK_T.kam = { id: a.id, t, pos, ke, fov: cam.fov };
+    // subjek bidikan: garis mata, tangan isyarat, kepala terpotong
+    if (spek && (spek.bidik || spek.atasBahu)) {
+      const subj = spek.atasBahu ? spek.atasBahu[1] : spek.bidik, tk = dn.para[subj], jenis = spek.atasBahu ? 'atasBahu' : (spek.jenis || 'setengah');
+      if (tk && tk.akar.visible) {
+        const I = infoTokoh(dn, subj), v = titikMata(I).project(cam), fy = (1 - v.y) / 2, [lo, hi] = POTRET ? [.24, .46] : [.26, .48];
+        if (v.z < 1 && ['wajah', 'dekat', 'setengah', 'atasBahu'].includes(jenis) && spek.mata === undefined && (fy < lo || fy > hi)) out.saran.push(`adegan "${a.id}": garis mata "${subj}" di ±${Math.round(fy * 20) * 5} % tinggi bingkai (acuan close-up 30–40 %; ${fy > hi ? 'terlalu turun, mulut masuk zona subtitle' : 'terlalu naik'})`);
+        const h = new THREE.Vector3(...tk.titik('kepala')).project(cam); if (h.z < 1 && Math.abs(h.x) > .85 && Math.abs(h.x) < 1.2) out.saran.push(`adegan "${a.id}": kepala "${subj}" terpotong tepi bingkai`);
+        const pv = poseBerwaktu(tk.o.pose || 'berdiri', dn.t, a, false);
+        if (/^(tunjuk|presentasi|serahkan|lambai|usir)/.test(pv.a || '') && pv.dt > .5 && ['setengah', 'lutut', 'penuh'].includes(jenis)) { const tg = new THREE.Vector3(...tk.titik('tanganKa')).project(cam); if (tg.z < 1 && (Math.abs(tg.x) > 1 || Math.abs(tg.y) > 1)) out.saran.push(`adegan "${a.id}": tangan "${subj}" (${pv.a}) keluar bingkai — lebarkan bidikan atau biarkan ruang pandang otomatis`); }
+      }
+    }
+  }
+  return out;
+}

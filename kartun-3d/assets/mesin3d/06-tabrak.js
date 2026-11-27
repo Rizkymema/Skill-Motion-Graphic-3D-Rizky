@@ -160,9 +160,9 @@ Tokoh3D.prototype.raihSasaran = function (t) {
     this.lmLengan(L, v, vv => { this.aturLengan(L, vv); const hnd = new THREE.Vector3(...lok).applyMatrix4(L.tangan.matrixWorld); return [hnd.x - P.x, hnd.y - P.y, hnd.z - P.z, tunjuk ? (vv[3] || 0) * .0015 : 0, (vv[2] - v0[2]) * .0004]; }, { iter: 10, ambang: 1e-6, batas: 175, bobot: [1, 1, .5, .8] });
     return v.slice();
   };
-  const tugas = [];
-  if (o.tunjukKe) tugas.push(['Ka', nilaiDi(o.tunjukKe, t, a, .35), true, x => x]);
-  if (o.raih) for (const [sisi, kunciSisi] of [['Ka', 'ka'], ['Ki', 'ki']]) tugas.push([sisi, nilaiDi(o.raih, t, a, .35), false, x => (x && typeof x === 'object' && !Array.isArray(x) ? x[kunciSisi] : null)]);
+  const tugas = [], tb = (o.poseTiba ?? K.poseTiba) && typeof T_ANT === 'number' ? T_ANT + .22 : 0;   // poseTiba: IK ikut dimajukan → lengan sudah mengarah ke sasaran tepat di waktu kunci
+  if (o.tunjukKe) tugas.push(['Ka', nilaiDi(o.tunjukKe, t + tb, a, .35), true, x => x]);
+  if (o.raih) for (const [sisi, kunciSisi] of [['Ka', 'ka'], ['Ki', 'ki']]) tugas.push([sisi, nilaiDi(o.raih, t + tb, a, .35), false, x => (x && typeof x === 'object' && !Array.isArray(x) ? x[kunciSisi] : null)]);
   for (const [sisi, v, tunjuk, ambil] of tugas) {
     const asli = sisi === 'Ka' ? S.lKa : S.lKi, v0 = asli.slice(), keA = ambil(v.a);
     if ((keA === null || keA === undefined) && (v.k >= 1 || ambil(v.b) == null)) continue;

@@ -29,6 +29,7 @@ Semua ada di dalam satu HTML: Three.js r147 (MIT), mesin 3D + pasca-proses sinem
 | `references/mesin.md` | **API dunia 3D** (`d.*`): kamera + bidikan, cahaya/keadaan, **sinematik** (§5b), latar, benda, tokoh 3D, lapisan 2D di atas 3D, kecepatan, anti-tembus, cek |
 | `references/mesin-2d.md` | API lapisan 2D `g.*`, KONFIG umum, waktu/rujukan narasi, subtitle (film / satu kata), musik (§7b Epidemic per babak), SFX, transisi, ekspor |
 | `references/gaya.md` | gaya 3D (sinematik bawaan, kartun, clay, mainan, lowpoly), tata kamera, tata gerak |
+| `references/teknik-kamera.md` | **kamus teknik pengambilan + gerak tokoh** (sejak 27 Nov 2026, dari bedah RicksClips3000 + reel animasi 3D): fungsi cerita → ukuran shot/sudut/gerak/durasi/pose, 16 aturan berangka, opsi `tiba`/`reaksi`/`poseTiba`/`tangan`, rig lentur, cek teknik, kesalahan umum + cara cek di foto |
 | `references/palet.md` · `dunia-topik.md` · `storyboard.md` | warna per keadaan (8 suasana) · storyboard → adegan 3D, paket visual 8 baris · naskah, hook 3 dtk, tabel storyboard, checklist |
 | `references/hook.md` · `penyampaian.md` · `kemasan-seri.md` | dari kartun-stickman-3d: pola hook, cara bercerita/narasi seri, kemasan seri (judul, episode, komentar sematan) |
 | `references/kemasan.md` | judul, deskripsi, hashtag, thumbnail, unggah |
@@ -89,10 +90,10 @@ Balasan singkat: `gas`/`lanjut` = semua Rekomendasi; `revisi scene 3 …`; `rend
 5. **Masuk di tengah** ("lanjut <topik>"): tanpa `konfig.js` → Tahap 2; ada `konfig.js` tanpa persetujuan → pratinjau + dialog Tahap 2; disetujui tanpa `ekspor\` → Tahap 3/4; ada MP4 final → Tahap 5.
 
 ## 3. Tahap 2 — Storyboard + build + cek (klik 2)
-Baca `references/storyboard.md`, `gaya.md`, `palet.md`, `dunia-topik.md`, `mesin.md` (3D) dan bila perlu `mesin-2d.md`; contoh terdekat di `contoh/`.
+Baca `references/storyboard.md`, **`teknik-kamera.md`**, `gaya.md`, `palet.md`, `dunia-topik.md`, `mesin.md` (3D) dan bila perlu `mesin-2d.md`; contoh terdekat di `contoh/`.
 1. **Riset**: setiap fakta/angka dicek lewat web, sumber di `_kerja\naskah.txt` (`# sumber: …`); tanpa sumber → kalimat umum atau hitungan yang bisa dibuktikan.
 2. **Naskah**: hook 3 dtk → isi → penutup + **ajakan follow/like/komen**; satu baris = satu ide; ±2,3 kata/dtk; cara bercerita seri: `penyampaian.md`.
-3. **Storyboard** (tabel): `# · waktu · keadaan · dunia 3D + tokoh/aksi · bidikan (siapa · jenis) · teks atas · subtitle · SFX · transisi`. Perubahan visual tiap 1,5–3 dtk; transisi bervariasi.
+3. **Storyboard** (tabel): `# · waktu · keadaan · dunia 3D + tokoh/aksi · bidikan (siapa · jenis) · teks atas · subtitle · SFX · transisi`. Perubahan visual tiap 1,5–3 dtk; transisi bervariasi. **Bidikan dipilih per fungsi cerita** (`teknik-kamera.md` §2): hook dengan aksi di bingkai 0, push yang `tiba` di kata kunci, aksi utuh di bingkai (`poseTiba`), reaksi 0,3–0,6 dtk sesudahnya (`reaksi`) dan ditahan 1,2–2 dtk, klimaks lebar, dialog `atasBahu` bergantian.
 4. **Build**: `_kerja\konfig.js` (komentar kepala = paket visual; `KONFIG` dengan `gaya: 'sinematik'`, `suasana`, `tokoh` (pakai `tubuh`, `motif`, `kerah` supaya tiap tokoh berbeda); `ADEGAN` dengan `suasana`, **kamera = daftar BIDIKAN otomatis** (`mesin.md` §4a; koordinat manual hanya untuk adegan tanpa tokoh), `dunia(d)` (benda dari katalog dulu; pose bercerita + `tunjukKe`/`raih` sebelum pose sendiri), `gambar(g)` untuk teks/label 2D dengan `keluar`), lalu `jalankan.py rakit _kerja/konfig.js _kerja/film.html`.
 5. **Cek kualitas sendiri (wajib, berulang sampai beres)**:
    - `jalankan.py cek _kerja/film.html` sampai **BERES** (teks keluar layar/zona tombol, teks bertabrakan, subtitle/teks menutupi wajah, bingkai kosong, galat, WebGL, **clipping 3D**, **wajah/mulut tokoh yang bicara** terlihat, **latar kosong**, kamera di bawah lantai, **ajakan di akhir**; cara memperbaiki: `mesin.md` §4a, §9b, §9c). Saran juga dibaca.
@@ -121,10 +122,11 @@ Baca `references/storyboard.md`, `gaya.md`, `palet.md`, `dunia-topik.md`, `mesin
 Menu penutup: **Video/episode berikutnya (Rekomendasi)** · **Versi rasio lain** · **Revisi scene** · **Versi 2D (`/motion-graphic`)**.
 
 ## 7. Standar wajib (rinci di references)
-- **Deterministik**: dunia dibangun sekali per adegan, gerak fungsi dari `t`; tanpa `Math.random()`, `Date`, `setTimeout`, animasi CSS (pakai `acak(n)`/`derau(x)`). Butir film dan pasca-proses juga deterministik (pratinjau = ekspor).
+- **Deterministik**: dunia dibangun sekali per adegan, gerak fungsi dari `t`; tanpa `Math.random()`, `Date`, `setTimeout`, animasi CSS (pakai `acak(n)`/`derau(x)`). Butir film dan pasca-proses juga deterministik; sejak 27 Nov 2026 tiap bingkai dipulihkan ke keadaan dasar dulu, jadi bingkai yang sama identik di urutan seek mana pun (pratinjau = foto cek = ekspor).
 - **Tanpa aset luar, tanpa internet**: benda dari bentuk dasar + tekstur kanvas; file jalan offline.
 - **Kamera bergerak di setiap adegan**, bidikan otomatis untuk adegan bertokoh, kedalaman (benda depan + subjek + latar + kabut/kabur), sudut bervariasi antar-adegan.
-- **Tokoh hidup**: pose/ekspresi baru tiap 1,5–2,5 dtk, `bicara` saat dialog, `jalan`/`lari`, `lihat` lawan bicara, efek emosi; akting otomatis jangan dimatikan tanpa alasan.
+- **Tokoh hidup**: pose/ekspresi baru tiap 1,5–2,5 dtk, `bicara` saat dialog, `jalan`/`lari`, `lihat` lawan bicara, efek emosi; akting otomatis jangan dimatikan tanpa alasan. Rig lentur + antisipasi + gerak bertumpuk + bentuk tangan + kontrapposto otomatis (`teknik-kamera.md` §5–§6); `gerakLama`/`rig: 'ruas'` hanya untuk proyek lama.
+- **Teknik pengambilan** (`teknik-kamera.md` §3): kamera dan gerak menunjuk ke hal penting pada detik penting; garis mata close-up 30–40 %; tokoh kiri tetap di kiri (garis 180°, otomatis); saran cek teknik dibaca dan diperbaiki atau dijelaskan.
 - Warna ikut keadaan adegan; lampu menyala (`d.lampu`, `d.sorot`, `d.lampuGantung`); subtitle kecil gaya film (atau satu kata untuk seri); teks atas hanya hal penting dan keluar tepat waktu; hook kuat 3 dtk dengan benda utama topik; SFX di setiap kejadian; ≥ 4 jenis transisi; **ajakan di akhir**.
 - **Tanpa clipping** (`mesin.md` §9b): tokoh/benda saling tembus dan kamera di dalam benda = 0 di `cek`.
 - **Tetap cepat** (`mesin.md` §9): ≤ 16 gedung, ≤ 250 partikel, ≤ 5 tokoh, lampu berbayang ≤ 2 per adegan.

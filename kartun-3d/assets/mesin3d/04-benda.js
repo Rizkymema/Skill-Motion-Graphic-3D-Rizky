@@ -149,7 +149,7 @@ Object.assign(DP, {
     }
     g.userData.tinggi = h; g.userData.lebar = w;
     this.pasang(g, o);
-    if (o.hadapKamera) { const sumbuY = o.hadapKamera === 'y'; this.upd.push(() => { if (!g.visible) return; if (sumbuY) { const c = this.kamera.position, p = g.getWorldPosition(new THREE.Vector3()); g.rotation.y = Math.atan2(c.x - p.x, c.z - p.z); } else g.quaternion.copy(this.kamera.quaternion); }); }
+    if (o.hadapKamera) { this._pakaiKamera = true; const sumbuY = o.hadapKamera === 'y'; this.upd.push(() => { if (!g.visible) return; if (sumbuY) { const c = this.kamera.position, p = g.getWorldPosition(new THREE.Vector3()); g.rotation.y = Math.atan2(c.x - p.x, c.z - p.z); } else g.quaternion.copy(this.kamera.quaternion); }); }
     return g;
   },
   /** papan nama/spanduk: teks, lebar, tinggi, warna (papan), warnaTeks, tiang (panjang tiang ke tanah, 0 = menempel), lampu (bingkai bohlam) */

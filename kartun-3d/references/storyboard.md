@@ -20,6 +20,8 @@ Satu baris per scene, ringkas:
 | 2 | 0:03–0:06 | ruang malam, tokoh di sofa main HP (`naik: sofa`, `dudukHp`), notifikasi di layar HP | dolly masuk ke setengah badan | sub: Semua berawal dari satu notifikasi. | notif, pop | glitch |
 | … | | | | | | |
 
+Kolom **Bidikan** dipilih per fungsi cerita dari `references/teknik-kamera.md` §2 (hook, penjelasan, kata kunci, sisipan, aksi, reaksi, klimaks, penutup) beserta waktunya: push yang tiba di kata kunci (`tiba`), reaksi +0,3–0,6 dtk sesudah aksi (`reaksi`), klimaks lebar.
+
 Tulis juga di bawah tabel: hook + logline, sumber, **keadaan + warna dominan tiap adegan** (mis. oranye → sorot → hijau → malam; `references/palet.md`), **terjemahan storyboard** (tempat, tokoh ada/tidak, aksi, benda bertulisan, teks atas; `references/dunia-topik.md` §1), musik. Kolom tabel di atas ditambah **Keadaan** (suasana adegan) dan **Tokoh/aksi**.
 
 ## 3. Dari storyboard ke konfig
@@ -46,6 +48,7 @@ Tulis juga di bawah tabel: hook + logline, sumber, **keadaan + warna dominan tia
 - [ ] Kamera 3D bergerak di setiap adegan (dolly/orbit/ikut/geser, `references/gaya.md` §2); ada kedalaman (benda depan + subjek + latar + kabut); tidak ada benda menutupi wajah.
 - [ ] ≥ 4 jenis transisi, dipilih menurut makna; fade paling banyak sekali.
 - [ ] Tokoh berganti pose/ekspresi mengikuti cerita; mulut bergerak saat bicara.
+- [ ] Teknik pengambilan (`teknik-kamera.md` §3, §8): push tiba di kata kunci, reaksi 0,3–0,6 dtk sesudah aksi dan ditahan 1,2–2 dtk, klimaks lebar, garis mata close-up 30–40 %, tokoh kiri tetap di kiri antar-bidikan, tangan isyarat utuh di bingkai; `cek` tanpa saran teknik yang belum dijelaskan.
 - [ ] Perubahan visual tiap 1,5–3 dtk (cek "hampir tidak ada perubahan visual" di saran).
 - [ ] Palet konsisten 4–5 warna; warna aksen hanya untuk hal penting.
 - [ ] SFX di setiap kejadian penting; musik berganti suasana di babak emosional.
